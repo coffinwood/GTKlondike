@@ -6,6 +6,8 @@ This project started partly as a proof of concept: how far can you get building 
 
 !Important note: this is neither a work in progress nor will the software be supported in any way.!
 
+<img width="1600" height="1070" alt="Screenshot of GTKlondike" src="https://github.com/user-attachments/assets/c775bd33-7798-46e9-b391-4261ced9f523" />
+
 ## Features
 
 - Classic Klondike Solitaire: 7 tableau lanes, 4 foundations, stock/waste, draw-1 or draw-3.
@@ -32,6 +34,8 @@ This project started partly as a proof of concept: how far can you get building 
 java --enable-native-access=ALL-UNNAMED -jar build/libs/GTKlondike-all.jar
 ```
 
+<img width="1600" height="1070" alt="Screenshot of GTKlondike" src="https://github.com/user-attachments/assets/dd923921-1bf8-4a53-8308-f64b77bd0909" />
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
@@ -46,6 +50,8 @@ GTKlondike bundles or depends on several third-party works; see [`src/main/resou
 - [Suit symbols](https://pixabay.com/vectors/diamonds-heart-pik-cross-cards-335025/) by stux, adapted.
 - Background patterns by [ComeOnCreative](https://codepen.io/ComeonCreative/pen/BWwXLG), [Manuel Pinto](https://codepen.io/P1N2O/pen/pyBNzX), [Arman Borkhani](https://codepen.io/armanb/pen/pvzYjaQ), [Steve Schoger](https://heropatterns.com/), and [csemszepp](https://uiverse.io/csemszepp/neat-parrot-45).
 - "Super Bouncer" font by fsuarez913.
+
+<img width="506" height="690" alt="Screenshot of GTKlondike's preferences dialogue" src="https://github.com/user-attachments/assets/53e72cc8-ee14-4479-89ad-bace75716217" />
 
 ## Development notes
 
