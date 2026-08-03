@@ -1,0 +1,26 @@
+<b><big>How to Play</big></b>
+
+The goal is to move every card onto the four foundation piles at the top right, built up by suit from Ace to King.
+
+The seven <b>tableau</b> piles are built down in alternating colours (e.g. a red 7 on a black 8). Any face-up run of cards that already alternates colour can be moved together as a group. An empty tableau pile may only be filled with a King (or a run starting with one).
+
+Click the <b>stock pile</b> (top left) to draw new cards into the <b>waste pile</b> next to it. Once the stock is empty, clicking it again recycles the waste pile back into the stock so play can continue.
+
+<b><big>Controls</big></b>
+
+• Drag and drop cards between piles, or between the waste pile and a tableau/foundation.
+• Double-click (or right-click) a (run of) face-up card to send it to another pile automatically, if a legal move exists.
+• <tt>Ctrl+N</tt> - start a New Game
+• <tt>Ctrl+Shift+R</tt> - Restart the current deal from scratch
+• <tt>Ctrl+Z</tt> - Undo the last move
+• <tt>Ctrl+Shift+A</tt> - Auto-Complete the game once every card is playable
+
+<b><big>Tips &amp; Tricks</big></b>
+
+• Don't rush cards to the foundations. Low cards (Aces, twos) are safe to send up early, but holding back middling cards in the tableau keeps a red/black landing spot open for cards you still need to move.
+• Try to empty a tableau column as early as possible; an empty column is the single most powerful spot on the board, since only a King can start a new pile there.
+• When several moves are legal, prefer the one that flips a face-down card or empties a column over one that merely rearranges face-up cards.
+• In Draw Three mode, cards you can't use yet aren't lost - keep cycling the stock, since the offset shifts by one each pass, eventually surfacing every card individually.
+• Stuck? Use <b>Undo</b> to walk back a few moves and try a different order rather than restarting the whole deal.
+• The <b>Auto-Complete</b> button lights up once every remaining card can be safely sent to the foundations - let it finish the game for you.
+• Want to challenge yourself? Try a timed game. You can pause the timer which will obfuscate the game board.

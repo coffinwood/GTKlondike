@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Third-party works used in GTKlondike (card art, icons, backgrounds, sounds, etc.).
+  Add one <work> element per item. Leave <website> or <notes> empty if not applicable.
+  Entries with an empty <name> are ignored (so this template can stay in place unfilled).
+-->
+<attributions>
+    <work>
+        <name>Java-GI Gtk4 bindings for Java</name>
+        <author>Jan-Willem Harmannij</author>
+        <website>https://github.com/jwharm</website>
+        <license>https://github.com/jwharm/java-gi?tab=LGPL-2.1-1-ov-file</license>
+        <notes>
+            https://www.java-gi.org/
+            Statically bundled into the application jar. Per LGPL-2.1 section 6, you may obtain
+            the library's source or object code and relink a modified version of it into
+            GTKlondike; see https://github.com/jwharm/java-gi for source.
+        </notes>
+    </work>
+
+    <work>
+        <name>Gradle Shadow Plugin</name>
+        <author>Gradle</author>
+        <website>https://plugins.gradle.org/plugin/com.gradleup.shadow</website>
+        <license>https://github.com/gradle/gradle/blob/master/LICENSE</license>
+        <notes></notes>
+    </work>
+
+    <work>
+        <name>Card Images</name>
+        <author>Mesmedir</author>
+        <website>https://opengameart.org/content/bridge-sized-playing-card-deck-png-cc0</website>
+        <license>https://creativecommons.org/publicdomain/zero/1.0/</license>
+        <notes></notes>
+    </work>
+
+    <work>
+        <name>Suit Symbols</name>
+        <author>stux</author>
+        <website>https://pixabay.com/vectors/diamonds-heart-pik-cross-cards-335025/</website>
+        <license>https://pixabay.com/service/license-summary/</license>
+        <notes>work was changed / adapted</notes>
+    </work>
+
+    <work>
+        <name>Background / Trees</name>
+        <author>ComeOnCreative (@ComeonCreative)</author>
+        <website>https://codepen.io/ComeonCreative/pen/BWwXLG</website>
+        <license>https://opensource.org/license/MIT</license>
+        <notes></notes>
+    </work>
+
+    <work>
+        <name>Background / Gradient</name>
+        <author>Manuel Pinto (@P1N2O)</author>
+        <website>https://codepen.io/P1N2O/pen/pyBNzX</website>
+        <license>https://opensource.org/license/MIT</license>
+        <notes></notes>
+    </work>
+
+    <work>
+        <name>Background / Circles</name>
+        <author>Arman Borkhani (@armanb)</author>
+        <website>https://codepen.io/armanb/pen/pvzYjaQ</website>
+        <license>https://opensource.org/license/MIT</license>
+        <notes></notes>
+    </work>
+
+    <work>
+        <name>Background / Topography</name>
+        <author>Steve Schoger</author>
+        <website>https://heropatterns.com/</website>
+        <license>https://creativecommons.org/licenses/by/4.0/</license>
+        <notes></notes>
+    </work>
+
+    <work>
+        <name>Background / Waves</name>
+        <author>csemszepp</author>
+        <website>https://uiverse.io/csemszepp/neat-parrot-45</website>
+        <license>https://opensource.org/license/MIT</license>
+        <notes></notes>
+    </work>
+
+    <work>
+        <name>Font / "Super Bouncer"</name>
+        <author>fsuarez913</author>
+        <website>https://www.dafont.com/de/super-bouncer.font</website>
+        <license>Free for personal use and commercial use.</license>
+        <notes>dafont.com references licence texts in font downloads (zip) of which there are none here</notes>
+    </work>
+
+    <work>
+        <name></name>
+        <author></author>
+        <website></website>
+        <license></license>
+        <notes></notes>
+    </work>
+</attributions>

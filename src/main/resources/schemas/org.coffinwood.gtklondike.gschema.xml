@@ -1,0 +1,32 @@
+<schemalist>
+    <schema id="org.coffinwood.gtklondike" path="/org/coffinwood/gtklondike/">
+        <key name="draw-amount" type="i">
+            <range min="1" max="3"/>
+            <default>1</default>
+            <summary>Number of cards drawn from the stock at a time</summary>
+        </key>
+        <key name="card-scale" type="d">
+            <range min="0.5" max="2.0"/>
+            <default>1.0</default>
+            <summary>Card size multiplier</summary>
+        </key>
+        <key name="card-back" type="s">
+            <choices>
+                <choice value="back_blue"/>
+                <choice value="back_grey"/>
+            </choices>
+            <default>"back_blue"</default>
+            <summary>Selected card back texture</summary>
+        </key>
+        <!-- no <choices> here on purpose: the set of "bg_" classes is discovered at runtime from
+             the stylesheet, so adding a new .bg_xxx rule shouldn't require a schema change too -->
+        <key name="background" type="s">
+            <default>"bg_trees"</default>
+            <summary>Selected background CSS class</summary>
+        </key>
+        <key name="show-timer" type="b">
+            <default>true</default>
+            <summary>Show the elapsed-time timer in the header bar</summary>
+        </key>
+    </schema>
+</schemalist>
