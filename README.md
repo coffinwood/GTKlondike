@@ -4,6 +4,8 @@ A Klondike Solitaire game for the Linux desktop, built with [GTK4](https://www.g
 
 This project started partly as a proof of concept: how far can you get building a real, native-feeling GTK4 desktop application in Java, using GTK's modern Java bindings rather than a web-view wrapper or a JVM-native toolkit like Swing/JavaFX? If you're exploring `java-gi` or Java+GTK yourself, the source is meant to be a readable, real-world reference rather than a toy example.
 
+!Important note: this is neither a work in progress nor will the software be supported in any way.!
+
 ## Features
 
 - Classic Klondike Solitaire: 7 tableau lanes, 4 foundations, stock/waste, draw-1 or draw-3.
