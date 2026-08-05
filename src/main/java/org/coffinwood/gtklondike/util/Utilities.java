@@ -34,7 +34,7 @@ public final class Utilities {
         List<Attribution> attributions = new ArrayList<>();
         try(InputStream inputStream = Utilities.class.getResourceAsStream("/attributions.xml")) {
             if(inputStream == null) {
-                return attributions;
+                throw new IllegalStateException("Attributions could not be loaded");
             }
             DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document document = documentBuilder.parse(inputStream);
