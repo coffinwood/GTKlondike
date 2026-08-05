@@ -18,6 +18,7 @@ public class Game {
     // lets restart() redeal the exact same layout instead of a fresh shuffle
     private final List<Card> initialDeckOrder;
     private int drawAmount;
+    private boolean hasStarted = false;
     private boolean isVictory = false;
     public Runnable onVictory; // set once by GTKlondike
     // board states captured just before each undoable mutation, most recent last
@@ -141,24 +142,6 @@ public class Game {
 
 
     /**
-     * return stock pile
-     * @return stock card pile
-     */
-    public StockPile getStockPile() {
-        return stockPile;
-    }
-
-
-    /**
-     * return waste pile
-     * @return waste card pile
-     */
-    public WastePile getWastePile() {
-        return wastePile;
-    }
-
-
-    /**
      * return list of tableau piles
      * @return list of tableau card piles
      */
@@ -224,6 +207,8 @@ public class Game {
             drawnBatch.add(card);
         }
         wastePile.pushBatch(drawnBatch);
+        // count draw as a game move *and* as a flag that a game was really started
+        addStats();
     }
 
 
@@ -243,9 +228,14 @@ public class Game {
         if(! target.canAcceptRun(run)) {
             return false;
         }
+        // "remember" game board for an eventual undo
         pushUndoSnapshot();
+        // remove card(s) from source
         sourcePile.removeRun(run);
+        // add card(s) to target
         target.addRun(run);
+        // count as a played game (once) and count as a game move
+        addStats();
 
         checkForVictory();
         // fired after the mutation (and the victory check) so a listener re-checking
@@ -317,6 +307,7 @@ public class Game {
         boolean wasVictory = isVictory;
         isVictory = getFoundationPiles().stream().allMatch(FoundationPile::isFull);
         if(isVictory && !wasVictory && onVictory != null) {
+            Statistics.addGameWon();
             onVictory.run();
         }
     }
@@ -451,6 +442,18 @@ public class Game {
         drawAmount = snapshot.drawAmount();
         // recompute silently: undoing should never (re-)trigger the victory popup
         isVictory = getFoundationPiles().stream().allMatch(FoundationPile::isFull);
+    }
+
+
+    /**
+     * add to statistics that a game move was made and - only once - that a game was started by moving cards
+     */
+    private void addStats() {
+        Statistics.addMove();
+        if(! hasStarted) {
+            hasStarted  = true;
+            Statistics.addGamePlayed();
+        }
     }
 
 
