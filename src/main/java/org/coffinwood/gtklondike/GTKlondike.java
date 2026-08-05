@@ -57,6 +57,14 @@ class GTKlondike extends Application {
     private Grid gameBoard;
     // frosted-glass "you won" banner, shown/hidden via boardOverlay.addOverlay()/removeOverlay()
     private Box victoryBanner;
+    // running-stats line ("So far, you've played...") stacked under victoryBanner - a separate
+    // sibling, not a child of it, since victoryBanner's own background image already fills its
+    // whole (aspect-ratio-locked) box via "background-size: contain", leaving no room inside it
+    // for a label without overlapping the image
+    private Label victoryStatsLabel;
+    // wraps victoryBanner + victoryStatsLabel as the single widget actually added/removed via
+    // boardOverlay.addOverlay()/removeOverlay() - see celebrateVictory()/clearVictoryBanner()
+    private Box victoryOverlay;
     // frosted-glass "paused" cover, shown/hidden via boardOverlay.addOverlay()/removeOverlay() -
     // see pauseGame()/resumeGame(). Unlike victoryBanner it fills the whole board (no halign/valign
     // set), so the position underneath is fully hidden rather than just centrally obscured
@@ -122,6 +130,9 @@ class GTKlondike extends Application {
         CardImages.setBackTexture(preferences.getCardBack());
         setupActions();
 
+        // load game stats
+        Statistics.loadStats();
+
         // load CSS stylesheet
         CssProvider cssProvider = new CssProvider();
         String cssText = Utilities.loadResourceText("/style/gtklondike.css");
@@ -153,6 +164,22 @@ class GTKlondike extends Application {
         victoryBanner.addCssClass("card_pile_base");
         victoryBanner.addCssClass("victory_banner");
 
+        victoryStatsLabel = Label.builder()
+                .setJustify(Justification.CENTER)
+                .setHalign(Align.CENTER)
+                .setWrap(true)
+                .build();
+        victoryStatsLabel.addCssClass("victory_stats_label");
+
+        victoryOverlay = Box.builder()
+                .setOrientation(Orientation.VERTICAL)
+                .setSpacing(12)
+                .setHalign(Align.CENTER)
+                .setValign(Align.CENTER)
+                .build();
+        victoryOverlay.append(victoryBanner);
+        victoryOverlay.append(victoryStatsLabel);
+
         pauseOverlay = buildPauseOverlay();
 
         // the board's pile/card widgets are built once and reused for every New Game/Restart/
@@ -165,6 +192,22 @@ class GTKlondike extends Application {
         onGameReplaced();
         gameTimer.reset();
         window.present();
+    }
+
+
+    /**
+     * persist game stats once, when the app is actually closing - see Statistics.saveStats() for
+     * why this doesn't happen after every move instead
+     * NOTE: this might lose players "game progress" should the app crash, but prevents constant writing to the drive.
+     */
+    @Override
+    public void shutdown() {
+        Statistics.saveStats();
+        // GApplication requires overridden vfuncs to chain up to the parent implementation -
+        // without this, GLib logs a "failed to chain up on ::shutdown" critical and its own
+        // teardown (unregistering, releasing the hold that's keeping the main loop alive, etc.)
+        // never runs
+        super.shutdown();
     }
 
 
@@ -504,7 +547,7 @@ class GTKlondike extends Application {
                 .setValign(Align.CENTER)
                 // overlay (below) is an unset-orientation (i.e. default HORIZONTAL) Box, which
                 // packs a single non-expanding child at its natural size flush to the start -
-                // content's own halign/valign=CENTER has nothing to center within unless it also
+                // content's own halign/valign=CENTER has nothing to centre within unless it also
                 // claims the box's full area via expand, so it actually centers within the whole
                 // (window-filling) pause overlay rather than sitting pinned to the left edge
                 .setHexpand(true)
@@ -748,6 +791,11 @@ class GTKlondike extends Application {
         int bannerWidth = (int) (gameBoard.getWidth() * VICTORY_BANNER_WIDTH_FRACTION);
         int bannerHeight = (int) (bannerWidth * VICTORY_BANNER_ASPECT_RATIO);
         victoryBanner.setSizeRequest(bannerWidth, bannerHeight);
+        // Statistics.addGameWon() already ran (Game.checkForVictory() calls it just before
+        // onVictory.run() fires this), so these reads include the win being celebrated right now
+        victoryStatsLabel.setLabel(String.format(
+                "So far, you've played %d moves and won %d out of your %d played games.",
+                Statistics.getMoves(), Statistics.getGamesWon(), Statistics.getGamesPlayed()));
 
         // hide the finished board rather than leaving it visible behind the banner - board
         // widgets are permanent/pooled now (see BoardWidgets), so this hides it instead of the
@@ -755,7 +803,7 @@ class GTKlondike extends Application {
         // made Java-unreachable) every pile/card widget on it in one burst; onGameReplaced()
         // (New Game/Restart from here, or Undo) makes it visible again
         gameBoard.setVisible(false);
-        boardOverlay.addOverlay(victoryBanner);
+        boardOverlay.addOverlay(victoryOverlay);
     }
 
 
@@ -770,8 +818,8 @@ class GTKlondike extends Application {
         newGameButton.removeCssClass("button_hint_glow");
         gameTimer.setToggleButtonEnabled(true);
         pauseAction.setEnabled(true);
-        if(victoryBanner.getParent() != null) {
-            boardOverlay.removeOverlay(victoryBanner);
+        if(victoryOverlay.getParent() != null) {
+            boardOverlay.removeOverlay(victoryOverlay);
         }
     }
 
@@ -865,8 +913,7 @@ class GTKlondike extends Application {
 
     /**
      * let the piles' widgets be a drop target for drag and drop actions
-     * @param target target pile
-     * @param game game logic object
+     * @param targetSupplier move target
      */
     private void attachDropTarget(PileWidget widget, Supplier<MoveTarget> targetSupplier) {
         DropTarget dropTarget = DropTarget.builder()
