@@ -13,6 +13,8 @@ import org.gnome.glib.GLib;
 import org.gnome.glib.Type;
 import org.gnome.gtk.*;
 import org.gnome.pango.WrapMode;
+
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -793,10 +795,12 @@ class GTKlondike extends Application {
         victoryBanner.setSizeRequest(bannerWidth, bannerHeight);
         // Statistics.addGameWon() already ran (Game.checkForVictory() calls it just before
         // onVictory.run() fires this), so these reads include the win being celebrated right now
+        NumberFormat numberFormat = NumberFormat.getIntegerInstance(Locale.getDefault());
         victoryStatsLabel.setLabel(String.format(
-                "So far, you've played %d moves and won %d out of your %d played games.",
-                Statistics.getMoves(), Statistics.getGamesWon(), Statistics.getGamesPlayed()));
-
+                "So far, you've played %s moves and won %s out of your %s played games.",
+                numberFormat.format(Statistics.getMoves()),
+                numberFormat.format(Statistics.getGamesWon()),
+                numberFormat.format(Statistics.getGamesPlayed())));
         // hide the finished board rather than leaving it visible behind the banner - board
         // widgets are permanent/pooled now (see BoardWidgets), so this hides it instead of the
         // boardOverlay.setChild(null) this used to be, which would have unparented (and thus
