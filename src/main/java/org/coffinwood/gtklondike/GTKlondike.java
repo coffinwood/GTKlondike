@@ -89,9 +89,6 @@ class GTKlondike extends Application {
     private Button newGameButton;
     // header-bar elapsed-time display, packed next to the auto-complete button (see buildHeaderBar())
     private GameTimer gameTimer;
-    // TEMPORARY debug widget: live move counter, packed next to gameTimer, to sanity-check
-    // Statistics.getMoves() against the player's own count while playing - remove once confirmed
-    private Label moveCounterLabel;
     // TRUE while the player has explicitly paused (pauseOverlay showing, board input blocked) -
     // distinct from the timer's own running/paused state, which is also stopped once the game is
     // won (see celebrateVictory()), where none of this pause machinery applies
@@ -292,8 +289,6 @@ class GTKlondike extends Application {
      */
     private void handleGameStateChanged() {
         updateActionStates();
-        // TEMPORARY debug: see moveCounterLabel field comment
-        moveCounterLabel.setLabel("Moves: " + Statistics.getMoves());
         // lazy-start: the clock doesn't run until the player actually makes the first move/draw,
         // so launching the app (or dealing a New Game/Restart) doesn't silently time the player
         // just looking at the board before they've decided to play. A no-op once already running;
@@ -445,10 +440,6 @@ class GTKlondike extends Application {
         gameTimer = new GameTimer();
         gameTimer.setOnToggleClicked(this::toggleTimer);
         headerBar.packStart(gameTimer.getWidget());
-
-        // TEMPORARY debug widget - see moveCounterLabel field comment
-        moveCounterLabel = Label.builder().setLabel("Moves: " + Statistics.getMoves()).build();
-        headerBar.packStart(moveCounterLabel);
 
         Button preferencesButton = Button.builder()
                 .setIconName("preferences-system-symbolic")
