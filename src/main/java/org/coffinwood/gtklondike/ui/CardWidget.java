@@ -54,6 +54,9 @@ public class CardWidget extends Widget {
         // a widget can only be reused once fully detached (see CardWidgetPool.release()), which
         // never leaves it invisible - this just guards against reusing one still mid-drag-hide
         setVisible(true);
+        // remove CSS classes
+        removeCssClass("card_selected");
+        removeCssClass("card_normal");
     }
 
 
@@ -151,12 +154,12 @@ public class CardWidget extends Widget {
 
         Snapshot snapshot = new Snapshot();
         texture.snapshot(snapshot, width, height);
-        // toPaintable(), not freeToPaintable(): the latter maps to gtk_snapshot_free_to_paintable,
-        // whose naming/semantics match the "consumes its receiver" pattern that caused this
-        // session's earlier Gsk.Transform native-memory-corruption bug. Snapshot is a plain
-        // GObject here (not a boxed rc-type like Transform was) so it may well be fine either
-        // way, but there's no reason to re-risk that class of bug for no benefit.
-        return snapshot.toPaintable(new Size(width, height));
+        // Unlike GObjects java-gi hands back from native code, `new Snapshot()` never gets a
+        // toggle-ref/Cleaner registered (InstanceCache.newGObject() doesn't call put()), so
+        // nothing ever frees this on its own
+        Paintable paintable = snapshot.toPaintable(new Size(width, height));
+        snapshot.unref();
+        return paintable;
     }
 
 
