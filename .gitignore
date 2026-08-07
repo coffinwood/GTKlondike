@@ -1,5 +1,7 @@
 .gradle
 build/
+*.log
+hs_err_pid*.log
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
