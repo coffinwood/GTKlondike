@@ -173,7 +173,9 @@
 
 .button_hint_glow:disabled {
     color: inherit;
-    box-shadow: none;
+    border: inherit;
+    box-shadow: inherit;
+    animation: none;
 }
 
 /* header-bar elapsed-time display; tabular-nums keeps digit widths constant so the label doesn't
