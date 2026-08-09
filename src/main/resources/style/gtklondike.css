@@ -115,9 +115,6 @@
     100% { box-shadow: var(--insetX) var(--insetY) var(--blur) var(--spread) rgba(255,  0,  0, var(--alpha)); } /* back to red */
 }
 
-/* running-stats line shown under the victory banner (see celebrateVictory()); plain text over
-   whatever's behind it (the board is hidden while this shows), so it needs its own contrast
-   rather than the frosted-glass treatment .victory_banner itself uses */
 .victory_stats_label {
     color: #ffffff;
     font-size: 1.3rem;
@@ -164,11 +161,13 @@
 /* buttons */
 /* GTK's CSS engine has no ":enabled" pseudo-class (that's web-CSS only) - plain, unqualified
    ".button_hint_glow" already matches the default (enabled) state; ":disabled" below is what
-   GTK actually supports for the opposite state. A fixed glow, not an animated pulse: GTK's CSS
-   animation support flickers on this box-shadow (repaint timing, not something fixable here) */
+   GTK actually supports for the opposite state.
+*/
 .button_hint_glow {
-    color: darkgoldenrod;
+    border-color: darkgoldenrod;
     box-shadow: 0 0 1em rgba(184, 134, 11, .8), 0 0 2em rgba(184, 134, 11, .4);
+    animation: blink 3s;
+    animation-iteration-count: 3;
 }
 
 .button_hint_glow:disabled {
@@ -176,6 +175,10 @@
     border: inherit;
     box-shadow: inherit;
     animation: none;
+}
+
+@keyframes blink {
+    50% { border-color: inherit; }
 }
 
 /* header-bar elapsed-time display; tabular-nums keeps digit widths constant so the label doesn't

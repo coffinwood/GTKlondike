@@ -292,12 +292,6 @@ class GTKlondike extends Application {
     private void handleGameStateChanged() {
         updateActionStates();
         // lazy-start: the clock doesn't run until the player actually makes the first move/draw,
-        // so launching the app (or dealing a New Game/Restart) doesn't silently time the player
-        // just looking at the board before they've decided to play. A no-op once already running;
-        // guarded against victory (celebrateVictory() already paused it for the winning move, just
-        // before this callback fires - starting it back up here would undo that) and against an
-        // explicit pause (board input is blocked while paused, so this shouldn't normally fire at
-        // all then, but the guard costs nothing and avoids relying on that invariant)
         if(! isPaused && ! game.isVictory()) {
             gameTimer.start();
         }
