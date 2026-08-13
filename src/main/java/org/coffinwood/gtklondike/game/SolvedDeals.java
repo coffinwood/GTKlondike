@@ -12,6 +12,7 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -24,63 +25,110 @@ import java.util.concurrent.ThreadLocalRandom;
  * per draw amount (a deck's solvability depends on how many cards are drawn from the stock at a
  * time). Lets the UI offer a "Deal a Solvable Game" option once a draw amount's library has grown
  * large enough that reusing one still feels like an ordinary random deal.
+ * <p>
+ * Each draw amount actually has two tiers, transparently merged: a read-only "bundled" set shipped
+ * on the classpath (see BUNDLED_RESOURCE_PATH) - a "starter pack" so a fresh install can offer this
+ * feature immediately instead of waiting for the player to grind out 50 wins themselves - and a
+ * read/write "user" set persisted to this player's own solveddeals-draw*.xml. Only the user tier is
+ * ever written to; the bundled tier is baked into the jar at build time.
  */
 public class SolvedDeals {
-    // how many solved deals a draw amount's library needs before "Deal a Solvable Game" unlocks
-    // for it
-    // TODO temporarily lowered from 50 for manual testing - restore to 50 before release
-    public static final int MIN_LIBRARY_SIZE_TO_OFFER = 1;
-    // oldest entries are evicted past this, purely to keep parse time bounded over years of play -
-    // at ~150-180 bytes/entry this is nowhere near a real disk-space concern
+    // how many solved deals a draw amount's library (bundled + user, combined) needs before "Deal
+    // a Solvable Game" unlocks for it
+    public static final int MIN_LIBRARY_SIZE_TO_OFFER = 50;
+    // oldest user entries are evicted past this, purely to keep parse time bounded over years of
+    // play - at ~150-180 bytes/entry this is nowhere near a real disk-space concern
     private static final int MAX_ENTRIES_PER_FILE = 1000;
+    // classpath directory holding the shipped starter pack, using the exact same filenames (and
+    // XML format, see loadDocument()) as the user's own solveddeals-draw*.xml - so shipping a
+    // starter pack is just a matter of copying a played-in player's own files in here at build time
+    private static final String BUNDLED_RESOURCE_DIR = "/solveddeals/";
 
-    private static List<List<Card>> draw1Deals = new ArrayList<>();
-    private static List<List<Card>> draw3Deals = new ArrayList<>();
+    private static List<List<Card>> userDraw1Deals = new ArrayList<>();
+    private static List<List<Card>> userDraw3Deals = new ArrayList<>();
+    private static List<List<Card>> bundledDraw1Deals = new ArrayList<>();
+    private static List<List<Card>> bundledDraw3Deals = new ArrayList<>();
     private static Path draw1File, draw3File;
 
 
     /**
-     * load both draw-amount libraries from the user's writable solveddeals-draw*.xml files - or,
-     * the first time either has been played to completion, leave that list empty
+     * load both draw-amount libraries: the user's writable solveddeals-draw*.xml files (or, the
+     * first time either has been played to completion, an empty list), plus whatever starter-pack
+     * deals are bundled on the classpath for each
      */
     public static void load() {
         Path dataDir = Path.of(GLib.getUserDataDir(), "gtklondike");
         draw1File = dataDir.resolve("solveddeals-draw1.xml");
         draw3File = dataDir.resolve("solveddeals-draw3.xml");
-        draw1Deals = loadFile(draw1File);
-        draw3Deals = loadFile(draw3File);
+        userDraw1Deals = loadUserFile(draw1File);
+        userDraw3Deals = loadUserFile(draw3File);
+        bundledDraw1Deals = loadBundledResource("solveddeals-draw1.xml");
+        bundledDraw3Deals = loadBundledResource("solveddeals-draw3.xml");
     }
 
 
     /**
-     * parse one library file into its list of deck orders
+     * parse one user library file into its list of deck orders
      * @param file library file to read
      * @return the file's deck orders, or an empty list if the file doesn't exist yet
      */
-    private static List<List<Card>> loadFile(Path file) {
-        List<List<Card>> deals = new ArrayList<>();
+    private static List<List<Card>> loadUserFile(Path file) {
         if(! Files.exists(file)) {
-            return deals;
+            return new ArrayList<>();
         }
+        try(InputStream inputStream = Files.newInputStream(file)) {
+            return loadDocument(inputStream);
+        }
+        catch(IOException exception) {
+            throw new IllegalStateException("Could not read " + file.getFileName() + ".", exception);
+        }
+    }
 
+
+    /**
+     * parse one bundled starter-pack resource into its list of deck orders
+     * @param resourceName file name, resolved under BUNDLED_RESOURCE_DIR on the classpath
+     * @return the resource's deck orders, or an empty list if no starter pack was shipped for it
+     */
+    private static List<List<Card>> loadBundledResource(String resourceName) {
+        try(InputStream inputStream = SolvedDeals.class.getResourceAsStream(BUNDLED_RESOURCE_DIR + resourceName)) {
+            if(inputStream == null) {
+                return new ArrayList<>();
+            }
+            return loadDocument(inputStream);
+        }
+        catch(IOException exception) {
+            throw new IllegalStateException("Could not read bundled " + resourceName + ".", exception);
+        }
+    }
+
+
+    /**
+     * parse a solvedDeals XML document (from either a user file or a bundled resource) into its
+     * list of deck orders
+     * @param inputStream document contents
+     * @return the document's deck orders
+     */
+    private static List<List<Card>> loadDocument(InputStream inputStream) throws IOException {
+        List<List<Card>> deals = new ArrayList<>();
         try {
             DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-            Document document = documentBuilder.parse(file.toFile());
+            Document document = documentBuilder.parse(inputStream);
 
             NodeList dealNodes = document.getElementsByTagName("deal");
             for(int dealIndex = 0; dealIndex < dealNodes.getLength(); dealIndex++) {
                 deals.add(decodeDeck(dealNodes.item(dealIndex).getTextContent()));
             }
         }
-        catch(IOException | javax.xml.parsers.ParserConfigurationException | org.xml.sax.SAXException exception) {
-            throw new IllegalStateException("Could not read " + file.getFileName() + ".", exception);
+        catch(javax.xml.parsers.ParserConfigurationException | org.xml.sax.SAXException exception) {
+            throw new IllegalStateException("Could not parse solved-deals document.", exception);
         }
         return deals;
     }
 
 
     /**
-     * persist one library file
+     * persist one user library file
      * @param file library file to write
      * @param deals deck orders to write, in order
      */
@@ -180,43 +228,62 @@ public class SolvedDeals {
 
 
     /**
-     * record a newly-won deck as solvable, unless that exact deck order is already in the
-     * matching draw amount's library. Saves to disk immediately (unlike Statistics' shutdown-only
-     * save) since a solved deal is a rare, small, valuable event worth not risking to a crash
-     * before the next shutdown.
-     * @param drawAmount the draw amount this deck was won under (1 or 3)
-     * @param deckOrder the deck's original deal order
+     * is this exact deck order already present in either tier of a draw amount's library?
+     * @param drawAmount draw amount (1 or 3)
+     * @param deckOrder deck order to look for
+     * @return TRUE if a matching deck is already in the bundled or user tier
      */
-    public static void recordSolvedDeal(int drawAmount, List<Card> deckOrder) {
-        List<List<Card>> deals = deals(drawAmount);
-        for(List<Card> existing : deals) {
+    private static boolean isAlreadyKnown(int drawAmount, List<Card> deckOrder) {
+        for(List<Card> existing : userDeals(drawAmount)) {
             if(decksEqual(existing, deckOrder)) {
-                return;
+                return true;
             }
         }
-
-        deals.add(cloneDeck(deckOrder));
-        while(deals.size() > MAX_ENTRIES_PER_FILE) {
-            deals.remove(0);
+        for(List<Card> existing : bundledDeals(drawAmount)) {
+            if(decksEqual(existing, deckOrder)) {
+                return true;
+            }
         }
-        saveFile(drawAmount == 3 ? draw3File : draw1File, deals);
+        return false;
     }
 
 
     /**
-     * number of solved deals currently in a draw amount's library
+     * record a newly-won deck as solvable into the user tier, unless that exact deck order is
+     * already known (in either tier) for the matching draw amount. Saves to disk immediately
+     * (unlike Statistics' shutdown-only save) since a solved deal is a rare, small, valuable event
+     * worth not risking to a crash before the next shutdown.
+     * @param drawAmount the draw amount this deck was won under (1 or 3)
+     * @param deckOrder the deck's original deal order
+     */
+    public static void recordSolvedDeal(int drawAmount, List<Card> deckOrder) {
+        if(isAlreadyKnown(drawAmount, deckOrder)) {
+            return;
+        }
+
+        List<List<Card>> userDeals = userDeals(drawAmount);
+        userDeals.add(cloneDeck(deckOrder));
+        while(userDeals.size() > MAX_ENTRIES_PER_FILE) {
+            userDeals.removeFirst();
+        }
+        saveFile(drawAmount == 3 ? draw3File : draw1File, userDeals);
+    }
+
+
+    /**
+     * number of solved deals currently in a draw amount's library (bundled + user, combined)
      * @param drawAmount draw amount (1 or 3)
      * @return library size
      */
     public static int getLibrarySize(int drawAmount) {
-        return deals(drawAmount).size();
+        return userDeals(drawAmount).size() + bundledDeals(drawAmount).size();
     }
 
 
     /**
      * has a draw amount's library grown large enough to offer "Deal a Solvable Game" for it?
      * @param drawAmount draw amount (1 or 3)
-     * @return TRUE if the library has at least MIN_LIBRARY_SIZE_TO_OFFER entries
+     * @return TRUE if the combined library has at least MIN_LIBRARY_SIZE_TO_OFFER entries
      */
     public static boolean hasEnoughSolvedDeals(int drawAmount) {
         return getLibrarySize(drawAmount) >= MIN_LIBRARY_SIZE_TO_OFFER;
@@ -224,25 +291,42 @@ public class SolvedDeals {
 
 
     /**
-     * pick a uniformly random solved deal from a draw amount's library
+     * pick a uniformly random solved deal from a draw amount's combined (bundled + user) library
      * @param drawAmount draw amount (1 or 3)
      * @return a fresh clone of a randomly chosen deck order, or null if that library is empty
      */
     public static List<Card> pickRandomDeal(int drawAmount) {
-        List<List<Card>> deals = deals(drawAmount);
-        if(deals.isEmpty()) {
+        List<List<Card>> userDeals = userDeals(drawAmount);
+        List<List<Card>> bundledDeals = bundledDeals(drawAmount);
+        int totalSize = userDeals.size() + bundledDeals.size();
+        if(totalSize == 0) {
             return null;
         }
-        return cloneDeck(deals.get(ThreadLocalRandom.current().nextInt(deals.size())));
+
+        int index = ThreadLocalRandom.current().nextInt(totalSize);
+        List<Card> chosen = index < bundledDeals.size()
+                ? bundledDeals.get(index)
+                : userDeals.get(index - bundledDeals.size());
+        return cloneDeck(chosen);
     }
 
 
     /**
-     * the in-memory library list for a draw amount
+     * the in-memory user-tier library list for a draw amount
      * @param drawAmount draw amount (1 or 3)
-     * @return draw3Deals if drawAmount is 3, draw1Deals otherwise
+     * @return userDraw3Deals if drawAmount is 3, userDraw1Deals otherwise
      */
-    private static List<List<Card>> deals(int drawAmount) {
-        return drawAmount == 3 ? draw3Deals : draw1Deals;
+    private static List<List<Card>> userDeals(int drawAmount) {
+        return drawAmount == 3 ? userDraw3Deals : userDraw1Deals;
+    }
+
+
+    /**
+     * the in-memory bundled-tier library list for a draw amount
+     * @param drawAmount draw amount (1 or 3)
+     * @return bundledDraw3Deals if drawAmount is 3, bundledDraw1Deals otherwise
+     */
+    private static List<List<Card>> bundledDeals(int drawAmount) {
+        return drawAmount == 3 ? bundledDraw3Deals : bundledDraw1Deals;
     }
 }
