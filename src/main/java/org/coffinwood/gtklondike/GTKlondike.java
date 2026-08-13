@@ -106,6 +106,11 @@ class GTKlondike extends Application {
     // the stylesheet, discovered once at startup so the Preferences background picker stays in
     // sync with the stylesheet without needing a matching Java-side list to maintain
     private List<String> backgroundClassNames;
+    // holds just the ".card_pile_empty" rule's background-image, regenerated with a fresh number
+    // by updateStockPileEmptyState() every time it changes - added to the display at a higher
+    // priority than the main stylesheet (see activate()) so its background-image wins over the
+    // static placeholder rule in gtklondike.css
+    private CssProvider stockPileIndicatorCssProvider;
 
 
     /**
@@ -152,6 +157,11 @@ class GTKlondike extends Application {
         cssProvider.loadFromString(cssText);
         Gtk.styleContextAddProviderForDisplay(Display.getDefault(), cssProvider, 800);
         backgroundClassNames = Utilities.discoverCssBackgroundClasses(cssText);
+
+        // higher priority (801 > 800) so its .card_pile_empty rule overrides the static
+        // placeholder one in gtklondike.css - see updateStockPileEmptyState()
+        stockPileIndicatorCssProvider = new CssProvider();
+        Gtk.styleContextAddProviderForDisplay(Display.getDefault(), stockPileIndicatorCssProvider, 801);
 
         // prepare the application window
         window = new ApplicationWindow(this);
@@ -288,9 +298,52 @@ class GTKlondike extends Application {
         updateActionStates();
         applyCardScale(preferences.getCardScale());
         updateDealSolvableAvailability();
+        updateStockPileEmptyState();
         // celebrateVictory() hides the board without unparenting it (see there) - undo that here
         // too, since a New Game/Restart from the victory screen goes through this same method
         gameBoard.setVisible(true);
+    }
+
+
+    /**
+     * toggle the "card_pile_empty" CSS class on the stock pile widget depending on whether the
+     * stock pile currently has any cards - see Game.isStockPileEmpty() - and, while it applies,
+     * refresh the number that class's background-image displays (see buildStockPileEmptyCss()).
+     * Called after New Game/Restart/Undo and after every draw/move/undo, since any of those can
+     * empty (or refill, via undo) the stock pile, or change the waste pile's own card count.
+     */
+    private void updateStockPileEmptyState() {
+        if(game.isStockPileEmpty()) {
+            boardWidgets.getStockWidget().addCssClass("card_pile_empty");
+        }
+        else {
+            boardWidgets.getStockWidget().removeCssClass("card_pile_empty");
+        }
+
+        // recycling the waste pile back into the stock only ever hands back a *different* set of
+        // cards than what's already on view if there's more waste than one batch's worth - within
+        // one batch (including "none at all"), it's just the same up-to-drawAmount cards cycling
+        // back, so treat that as "0 to draw" rather than the literal (unchanging) waste count
+        int wasteCount = game.getWasteCardCount();
+        int displayNumber = wasteCount > game.getDrawAmount() ? wasteCount : 0;
+        stockPileIndicatorCssProvider.loadFromString(buildStockPileEmptyCss(displayNumber));
+    }
+
+
+    /**
+     * build a ".card_pile_empty" CSS rule whose background-image is an inline SVG showing the
+     * given number, centred the same way the static placeholder rule in gtklondike.css is laid
+     * out - loaded into stockPileIndicatorCssProvider, which (being registered at a higher
+     * priority) overrides that static rule
+     * @param number the number to display
+     * @return a complete CSS rule, ready for CssProvider.loadFromString()
+     */
+    private String buildStockPileEmptyCss(int number) {
+        String svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 75'>"
+                + "<text x='90' y='37.5' text-anchor='middle' dominant-baseline='central' font-size='64' "
+                + "font-family='sans-serif' font-weight='bold' fill='rgba(255,255,255,0.3)'>"
+                + number + "</text></svg>";
+        return ".card_pile_empty { background-image: url(\"data:image/svg+xml;utf8, " + svg + "\"); }";
     }
 
 
@@ -311,6 +364,7 @@ class GTKlondike extends Application {
      */
     private void handleGameStateChanged() {
         updateActionStates();
+        updateStockPileEmptyState();
         // lazy-start: the clock doesn't run until the player actually makes the first move/draw,
         if(! isPaused && ! game.isVictory()) {
             gameTimer.start();
@@ -814,14 +868,21 @@ class GTKlondike extends Application {
     /**
      * ask for confirmation before applying a draw-amount change - a deal's winnability depends on
      * the draw amount, so silently keeping the current (possibly mid-play) deal after switching
-     * would be misleading about whether it's still solvable. Deals a brand new game if confirmed
-     * (not just Game.setDrawAmount(), which would leave the existing deal in place); reverts the
-     * just-toggled radio back to the previous draw amount if cancelled.
+     * would be misleading about whether it's still solvable. Skips the confirmation (and applies
+     * immediately) whenever there's nothing at stake to confirm: the game is already won (no
+     * active deal to lose - e.g. the victory banner is showing), or the current deal hasn't had a
+     * single move/draw made on it yet (Game.hasStarted() FALSE), so redealing it costs nothing.
+     * Reverts the just-toggled radio back to the previous draw amount if the player cancels.
      * @param newDrawAmount the draw amount the player just selected (1 or 3)
      * @param dialogParent the Preferences window, used as the confirmation dialog's transient parent
      * @param previousRadio the radio button that was active before this change, reactivated on cancel
      */
     private void confirmDrawAmountChange(int newDrawAmount, Window dialogParent, CheckButton previousRadio) {
+        if(game.isVictory() || ! game.hasStarted()) {
+            applyDrawAmountChange(newDrawAmount);
+            return;
+        }
+
         AlertDialog alertDialog = AlertDialog.builder()
                 .setMessage("Deal a New Game?")
                 .setDetail("Changing the draw amount changes which deals are winnable, so the current game needs to be redealt.")
@@ -840,11 +901,7 @@ class GTKlondike extends Application {
             }
 
             if(chosenButton == 1) {
-                preferences.setDrawAmount(newDrawAmount);
-                game = new Game(newDrawAmount, boardWidgets);
-                onGameReplaced();
-                clearVictoryBanner();
-                gameTimer.reset();
+                applyDrawAmountChange(newDrawAmount);
             }
             else {
                 suppressDrawAmountToggle = true;
@@ -852,6 +909,20 @@ class GTKlondike extends Application {
                 suppressDrawAmountToggle = false;
             }
         });
+    }
+
+
+    /**
+     * deal a brand new game under a newly-selected draw amount (not just Game.setDrawAmount(),
+     * which would leave the existing deal in place) - see confirmDrawAmountChange()
+     * @param newDrawAmount the draw amount to deal under (1 or 3)
+     */
+    private void applyDrawAmountChange(int newDrawAmount) {
+        preferences.setDrawAmount(newDrawAmount);
+        game = new Game(newDrawAmount, boardWidgets);
+        onGameReplaced();
+        clearVictoryBanner();
+        gameTimer.reset();
     }
 
 
