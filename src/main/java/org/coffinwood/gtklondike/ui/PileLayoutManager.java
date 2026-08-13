@@ -86,9 +86,13 @@ public class PileLayoutManager extends LayoutManager {
     /**
      * set how many of the most-recently-added cards should currently be spread out by the
      * horizontal offset; e.g. after drawing 3 cards in draw-3 mode, pass 3 so just that batch
-     * fans out while any older, already-covered cards stay flush behind them. Automatically
-     * clamped to the pile's actual current card count at layout time, so it's safe to leave this
-     * at a stale value once cards get played off the fan - it simply shrinks along with the pile
+     * fans out while any older, already-covered cards stay flush behind them. Clamped to the
+     * pile's actual current card count at layout time only as a safety net (e.g. once the pile
+     * shrinks below the fan itself, near the end of a game) - the caller is still responsible for
+     * lowering this as cards get played off the top of the fanned batch (see WastePile.removeRun()),
+     * since this class has no way to tell "the batch shrank" apart from "an older, already-covered
+     * batch sits closer to the end of the pile than it used to" - both just look like a smaller
+     * childCount, but only the former should ever grow the fan's window into older cards
      * @param fanCount trailing card count to fan out
      */
     public void setFanCount(int fanCount) {

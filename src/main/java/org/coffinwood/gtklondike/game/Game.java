@@ -168,6 +168,36 @@ public class Game {
 
 
     /**
+     * is the stock pile itself out of cards? TRUE both once there's nothing left to draw or
+     * recycle at all, and while the stock is empty but the waste pile still holds every card that
+     * would ever be drawn (including whatever's currently fanned/displayed there) - in both cases
+     * there's no face-down card actually sitting in the stock pile right now
+     * @return TRUE if the stock pile has no cards left
+     */
+    public boolean isStockPileEmpty() {
+        return stockPile.isEmpty();
+    }
+
+
+    /**
+     * number of cards currently on the waste pile
+     * @return card count
+     */
+    public int getWasteCardCount() {
+        return wastePile.size();
+    }
+
+
+    /**
+     * number of cards drawn from the stock at a time
+     * @return draw amount (1 or 3)
+     */
+    public int getDrawAmount() {
+        return drawAmount;
+    }
+
+
+    /**
      * return list of tableau piles
      * @return list of tableau card piles
      */
@@ -207,6 +237,17 @@ public class Game {
      * waste pile back into the stock and retrying doesn't push a second undo snapshot
      */
     private void performDraw() {
+        performDraw(false);
+    }
+
+
+    /**
+     * @param isMeaninglessCycle TRUE if this draw is a recycle-and-redraw that's just going to
+     *                           reshuffle the exact same up-to-drawAmount cards straight back into
+     *                           view (see the recycle branch below) - doesn't progress the game,
+     *                           so it shouldn't bump the move-count stat
+     */
+    private void performDraw(boolean isMeaninglessCycle) {
         // return if all piles are empty
         if(stockPile.isEmpty() && wastePile.isEmpty()) {
             return;
@@ -214,13 +255,18 @@ public class Game {
 
         // if the stock pile is empty, put all cards from the waste pile back into the stock pile and try again
         if (stockPile.isEmpty()) {
+            // the waste pile holds every card this recycle is about to redeal - if that's no more
+            // than one batch's worth, recycling+redrawing hands back the identical set of cards in
+            // the identical order, so it's not a real move (see GTKlondike.updateStockPileEmptyState(),
+            // which shows a "0" on the stock pile for this same situation)
+            boolean nothingNewToDraw = wastePile.size() <= drawAmount;
             List<Card> reclaimed = wastePile.drainAll();
             Collections.reverse(reclaimed);
             for(Card card : reclaimed) {
                 card.setFaceUp(false);
                 stockPile.push(card);
             }
-            performDraw();
+            performDraw(nothingNewToDraw);
             return;
         }
 
@@ -233,8 +279,10 @@ public class Game {
             drawnBatch.add(card);
         }
         wastePile.pushBatch(drawnBatch);
-        // count draw as a game move *and* as a flag that a game was really started
-        addStats();
+        if(! isMeaninglessCycle) {
+            // count draw as a game move *and* as a flag that a game was really started
+            addStats();
+        }
     }
 
 
@@ -346,6 +394,18 @@ public class Game {
      */
     public boolean isVictory() {
         return isVictory;
+    }
+
+
+    /**
+     * has any move or draw happened on this deal yet? FALSE right after a fresh deal (New Game/
+     * Restart/Deal a Solvable Game) until the player's first draw or move - e.g. so switching the
+     * draw amount before then can redeal silently instead of asking for confirmation, since
+     * nothing would actually be lost
+     * @return TRUE if addStats() has counted at least one move on this deal
+     */
+    public boolean hasStarted() {
+        return hasStarted;
     }
 
 

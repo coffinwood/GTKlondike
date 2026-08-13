@@ -913,7 +913,7 @@ class GTKlondike extends Application {
 
 
     /**
-     * deal a brand new game under a newly-selected draw amount (not just Game.setDrawAmount(),
+     * deal a brand-new game under a newly-selected draw amount (not just Game.setDrawAmount(),
      * which would leave the existing deal in place) - see confirmDrawAmountChange()
      * @param newDrawAmount the draw amount to deal under (1 or 3)
      */

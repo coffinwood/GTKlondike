@@ -15,6 +15,13 @@ public class WastePile implements MoveSource {
     private final PileWidget widget;
     private final PileLayoutManager layoutManager;
     private final BoardWidgets boardWidgets;
+    // how many of the pile's trailing cards still belong to the most recent draw batch and should
+    // stay fanned out - shrinks as cards are played off the top (see removeRun()), independently
+    // of the pile's total card count. PileLayoutManager.setFanCount() takes a *count*, not a fixed
+    // set of cards, so without tracking this separately, once this batch shrinks below its
+    // original size, the fan's trailing window (childCount - fanCount) would slide into whatever
+    // older, already-covered batch sits behind it and incorrectly re-reveal one of its cards
+    private int fanRemaining = 0;
 
 
     /**
@@ -65,7 +72,8 @@ public class WastePile implements MoveSource {
         for(Card card : cards) {
             push(card);
         }
-        layoutManager.setFanCount(cards.size());
+        fanRemaining = cards.size();
+        layoutManager.setFanCount(fanRemaining);
     }
 
 
@@ -100,6 +108,11 @@ public class WastePile implements MoveSource {
     @Override
     public void removeRun(List<Card> run) {
         cards.removeLast();
+        // shrink the fan along with whatever's left of the current draw batch - see fanRemaining
+        if(fanRemaining > 0) {
+            fanRemaining--;
+            layoutManager.setFanCount(fanRemaining);
+        }
     }
 
 
@@ -130,6 +143,7 @@ public class WastePile implements MoveSource {
             widget.removeCard(cardWidget);
             boardWidgets.releaseCardWidget(cardWidget);
         }
+        fanRemaining = 0;
         layoutManager.setFanCount(0);
         return drained;
     }
@@ -141,6 +155,15 @@ public class WastePile implements MoveSource {
      */
     public boolean isEmpty() {
         return cards.isEmpty();
+    }
+
+
+    /**
+     * number of cards currently on the pile
+     * @return card count
+     */
+    public int size() {
+        return cards.size();
     }
 
 
