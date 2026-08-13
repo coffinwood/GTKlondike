@@ -49,7 +49,7 @@ GTKlondike bundles or depends on several third-party works; see [`src/main/resou
 - [Card art](https://opengameart.org/content/bridge-sized-playing-card-deck-png-cc0) by Mesmedir (CC0).
 - [Suit symbols](https://pixabay.com/vectors/diamonds-heart-pik-cross-cards-335025/) by stux, adapted.
 - Background patterns by [ComeOnCreative](https://codepen.io/ComeonCreative/pen/BWwXLG), [Manuel Pinto](https://codepen.io/P1N2O/pen/pyBNzX), [Arman Borkhani](https://codepen.io/armanb/pen/pvzYjaQ), [Steve Schoger](https://heropatterns.com/), and [csemszepp](https://uiverse.io/csemszepp/neat-parrot-45).
-- "Super Bouncer" font by fsuarez913.
+- [Lemon Milk](https://www.dafont.com/de/lemon-milk.font) font by [Marsnev](https://marsnev.com/)
 
 <img width="506" height="690" alt="Screenshot of GTKlondike's preferences dialogue" src="https://github.com/user-attachments/assets/53e72cc8-ee14-4479-89ad-bace75716217" />
 
