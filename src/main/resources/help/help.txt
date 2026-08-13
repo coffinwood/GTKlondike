@@ -15,6 +15,10 @@ Click the <b>stock pile</b> (top left) to draw new cards into the <b>waste pile<
 • <tt>Ctrl+Z</tt> - Undo the last move
 • <tt>Ctrl+Shift+A</tt> - Auto-Complete the game once every card is playable
 
+<b><big>Deal a Solvable Game</big></b>
+
+Not every random deal can be won. Whenever you win a game, that exact deal is remembered in a small local library (kept separately for Draw One and Draw Three, since the draw amount affects whether a deal is solvable). Once a draw mode's library holds at least 50 winnable deals, a starred "Deal a Solvable Game" button appears next to New Game - it deals a deck from that library instead of a fresh shuffle. To another player it still looks and plays like an ordinary random deal; the only difference is that someone has already proven it can be won.
+
 <b><big>Tips &amp; Tricks</big></b>
 
 • Don't rush cards to the foundations. Low cards (Aces, twos) are safe to send up early, but holding back middling cards in the tableau keeps a red/black landing spot open for cards you still need to move.

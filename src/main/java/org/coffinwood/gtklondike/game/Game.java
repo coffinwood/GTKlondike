@@ -45,12 +45,38 @@ public class Game {
 
 
     /**
+     * deal a specific, already-known deck order (e.g. one drawn from SolvedDeals) instead of a
+     * fresh shuffle
+     * @param drawAmount number of cards drawn from the stock at a time
+     * @param boardWidgets the board's persistent/pooled widgets
+     * @param fixedDeckOrder the deck order to deal, bottom-to-top as consumed by deal(); not
+     *                       mutated or retained by the caller afterwards
+     */
+    public Game(int drawAmount, BoardWidgets boardWidgets, List<Card> fixedDeckOrder) {
+        this.drawAmount = drawAmount;
+        this.boardWidgets = boardWidgets;
+
+        this.initialDeckOrder = cloneDeck(fixedDeckOrder);
+        deal(cloneDeck(fixedDeckOrder));
+    }
+
+
+    /**
      * redeal the exact same shuffle this game started with, e.g. to retry a misplayed hand
      */
     public void restart() {
         deal(cloneDeck(initialDeckOrder));
         undoStack.clear();
         notifyGameStateChanged();
+    }
+
+
+    /**
+     * this game's original deal, e.g. to save it into SolvedDeals once won
+     * @return a fresh clone of the deck order this game started with
+     */
+    public List<Card> getInitialDeckOrder() {
+        return cloneDeck(initialDeckOrder);
     }
 
 
@@ -308,6 +334,7 @@ public class Game {
         isVictory = getFoundationPiles().stream().allMatch(FoundationPile::isFull);
         if(isVictory && !wasVictory && onVictory != null) {
             Statistics.addGameWon();
+            SolvedDeals.recordSolvedDeal(drawAmount, initialDeckOrder);
             onVictory.run();
         }
     }

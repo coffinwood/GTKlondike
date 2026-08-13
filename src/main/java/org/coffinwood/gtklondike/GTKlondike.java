@@ -1,5 +1,6 @@
 package org.coffinwood.gtklondike;
 
+import io.github.jwharm.javagi.base.GErrorException;
 import io.github.jwharm.javagi.gobject.types.Types;
 import org.coffinwood.gtklondike.game.*;
 import org.coffinwood.gtklondike.ui.*;
@@ -89,12 +90,18 @@ class GTKlondike extends Application {
     // glowed on victory to invite the next click, via the same "button_hint_glow" CSS class the
     // auto-complete button already uses
     private Button newGameButton;
+    // only visible once SolvedDeals.hasEnoughSolvedDeals() is true for the current draw amount -
+    // see updateDealSolvableAvailability()
+    private Button dealSolvableButton;
     // header-bar elapsed-time display, packed next to the auto-complete button (see buildHeaderBar())
     private GameTimer gameTimer;
     // TRUE while the player has explicitly paused (pauseOverlay showing, board input blocked) -
     // distinct from the timer's own running/paused state, which is also stopped once the game is
     // won (see celebrateVictory()), where none of this pause machinery applies
     private boolean isPaused;
+    // set around a cancelled draw-amount change's revert (see confirmDrawAmountChange()) so
+    // programmatically reactivating the previous radio doesn't re-trigger the confirmation flow
+    private boolean suppressDrawAmountToggle;
     // names (with the leading "bg_", e.g. "bg_trees") of every "bg_"-prefixed CSS class found in
     // the stylesheet, discovered once at startup so the Preferences background picker stays in
     // sync with the stylesheet without needing a matching Java-side list to maintain
@@ -134,6 +141,7 @@ class GTKlondike extends Application {
 
         // load game stats
         Statistics.loadStats();
+        SolvedDeals.load();
 
         // load CSS stylesheet
         CssProvider cssProvider = new CssProvider();
@@ -279,9 +287,21 @@ class GTKlondike extends Application {
         // (and thus canAutoComplete()) of a game that already existed
         updateActionStates();
         applyCardScale(preferences.getCardScale());
+        updateDealSolvableAvailability();
         // celebrateVictory() hides the board without unparenting it (see there) - undo that here
         // too, since a New Game/Restart from the victory screen goes through this same method
         gameBoard.setVisible(true);
+    }
+
+
+    /**
+     * show/hide the "Deal a Solvable Game" header-bar button depending on whether the *current*
+     * draw amount's SolvedDeals library has grown past MIN_LIBRARY_SIZE_TO_OFFER yet - called
+     * after New Game/Restart/Undo, after a win (which may just have crossed the threshold), and
+     * whenever the draw amount preference changes (a different library/threshold applies)
+     */
+    private void updateDealSolvableAvailability() {
+        dealSolvableButton.setVisible(SolvedDeals.hasEnoughSolvedDeals(preferences.getDrawAmount()));
     }
 
 
@@ -351,6 +371,23 @@ class GTKlondike extends Application {
         addAction(newGameAction);
         setAccelsForAction("app.new-game", new String[] { "<Control>n" });
 
+        SimpleAction dealSolvableAction = new SimpleAction("deal-solvable", null);
+        dealSolvableAction.onActivate(parameter -> {
+            List<Card> solvedDeckOrder = SolvedDeals.pickRandomDeal(preferences.getDrawAmount());
+            if(solvedDeckOrder == null) {
+                // button is hidden below the library-size threshold, so this shouldn't happen -
+                // fall back to an ordinary shuffle rather than doing nothing
+                game = new Game(preferences.getDrawAmount(), boardWidgets);
+            }
+            else {
+                game = new Game(preferences.getDrawAmount(), boardWidgets, solvedDeckOrder);
+            }
+            onGameReplaced();
+            clearVictoryBanner();
+            gameTimer.reset();
+        });
+        addAction(dealSolvableAction);
+
         restartAction = new SimpleAction("restart", null);
         restartAction.onActivate(parameter -> {
             game.restart();
@@ -412,6 +449,11 @@ class GTKlondike extends Application {
                 .setTooltipText("New Game")
                 .setActionName("app.new-game")
                 .build();
+        dealSolvableButton = Button.builder()
+                .setIconName("starred-symbolic")
+                .setTooltipText("Deal a Solvable Game")
+                .setActionName("app.deal-solvable")
+                .build();
         Button restartButton = Button.builder()
                 .setIconName("view-refresh-symbolic")
                 .setTooltipText("Restart Game")
@@ -429,6 +471,7 @@ class GTKlondike extends Application {
                 .build();
         autoCompleteButton.addCssClass("button_hint_glow");
         headerBar.packStart(newGameButton);
+        headerBar.packStart(dealSolvableButton);
         headerBar.packStart(restartButton);
         headerBar.packStart(undoButton);
         headerBar.packStart(autoCompleteButton);
@@ -691,15 +734,13 @@ class GTKlondike extends Application {
         CheckButton drawThreeRadio = CheckButton.builder().setLabel("Draw 3").setGroup(drawOneRadio).build();
         (preferences.getDrawAmount() == 3 ? drawThreeRadio : drawOneRadio).setActive(true);
         drawOneRadio.onToggled(() -> {
-            if(drawOneRadio.getActive()) {
-                preferences.setDrawAmount(1);
-                game.setDrawAmount(1);
+            if(drawOneRadio.getActive() && ! suppressDrawAmountToggle) {
+                confirmDrawAmountChange(1, dialog, drawThreeRadio);
             }
         });
         drawThreeRadio.onToggled(() -> {
-            if(drawThreeRadio.getActive()) {
-                preferences.setDrawAmount(3);
-                game.setDrawAmount(3);
+            if(drawThreeRadio.getActive() && ! suppressDrawAmountToggle) {
+                confirmDrawAmountChange(3, dialog, drawOneRadio);
             }
         });
 
@@ -771,6 +812,50 @@ class GTKlondike extends Application {
 
 
     /**
+     * ask for confirmation before applying a draw-amount change - a deal's winnability depends on
+     * the draw amount, so silently keeping the current (possibly mid-play) deal after switching
+     * would be misleading about whether it's still solvable. Deals a brand new game if confirmed
+     * (not just Game.setDrawAmount(), which would leave the existing deal in place); reverts the
+     * just-toggled radio back to the previous draw amount if cancelled.
+     * @param newDrawAmount the draw amount the player just selected (1 or 3)
+     * @param dialogParent the Preferences window, used as the confirmation dialog's transient parent
+     * @param previousRadio the radio button that was active before this change, reactivated on cancel
+     */
+    private void confirmDrawAmountChange(int newDrawAmount, Window dialogParent, CheckButton previousRadio) {
+        AlertDialog alertDialog = AlertDialog.builder()
+                .setMessage("Deal a New Game?")
+                .setDetail("Changing the draw amount changes which deals are winnable, so the current game needs to be redealt.")
+                .setButtons(new String[] { "Cancel", "Deal" })
+                .setCancelButton(0)
+                .setDefaultButton(1)
+                .setModal(true)
+                .build();
+
+        alertDialog.choose(dialogParent, null, (source, result, data) -> {
+            int chosenButton = 0; // treat a dismissed/failed dialog (e.g. Escape) as Cancel
+            try {
+                chosenButton = alertDialog.chooseFinish(result);
+            }
+            catch(GErrorException ignored) {
+            }
+
+            if(chosenButton == 1) {
+                preferences.setDrawAmount(newDrawAmount);
+                game = new Game(newDrawAmount, boardWidgets);
+                onGameReplaced();
+                clearVictoryBanner();
+                gameTimer.reset();
+            }
+            else {
+                suppressDrawAmountToggle = true;
+                previousRadio.setActive(true);
+                suppressDrawAmountToggle = false;
+            }
+        });
+    }
+
+
+    /**
      * called once when the game is won: clear the board's pile/card widgets, disable
      * Redeal/Undo/Auto-Complete (there's nothing left to do with them)
      */
@@ -802,6 +887,9 @@ class GTKlondike extends Application {
         // (New Game/Restart from here, or Undo) makes it visible again
         gameBoard.setVisible(false);
         boardOverlay.addOverlay(victoryOverlay);
+        // this win may have just pushed the current draw amount's SolvedDeals library past
+        // MIN_LIBRARY_SIZE_TO_OFFER
+        updateDealSolvableAvailability();
     }
 
 
