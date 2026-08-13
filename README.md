@@ -11,10 +11,10 @@ This project started partly as a proof of concept: how far can you get building 
 ## Features
 
 - Classic Klondike Solitaire: 7 tableau lanes, 4 foundations, stock/waste, draw-1 or draw-3.
+- Winning games builds a local library of solvable deals (up to 1.000 pseudo-random games that are technically winnable) for when you just want a relaxed game of Klondike
 - Drag-and-drop moves, click-to-move, undo, and one-click auto-complete once the rest of the game is forced.
 - A custom `PileLayoutManager` (a real GTK `LayoutManager`) for the cascading/fanned card layout, rather than absolute positioning.
 - Preferences: card scale, card back texture, background theme, draw amount, and an optional elapsed-time timer — persisted via GSettings.
-- A frosted-glass victory banner and pause overlay built from GTK4's `Overlay` + CSS.
 
 ## Requirements
 
