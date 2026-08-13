@@ -868,13 +868,9 @@ class GTKlondike extends Application {
     /**
      * ask for confirmation before applying a draw-amount change - a deal's winnability depends on
      * the draw amount, so silently keeping the current (possibly mid-play) deal after switching
-     * would be misleading about whether it's still solvable. Skips the confirmation (and applies
-     * immediately) whenever there's nothing at stake to confirm: the game is already won (no
-     * active deal to lose - e.g. the victory banner is showing), or the current deal hasn't had a
-     * single move/draw made on it yet (Game.hasStarted() FALSE), so redealing it costs nothing.
-     * Reverts the just-toggled radio back to the previous draw amount if the player cancels.
+     * would be misleading about whether it's still solvable.
      * @param newDrawAmount the draw amount the player just selected (1 or 3)
-     * @param dialogParent the Preferences window, used as the confirmation dialog's transient parent
+     * @param dialogParent the Preferences window, used as the confirmation dialogue's transient parent
      * @param previousRadio the radio button that was active before this change, reactivated on cancel
      */
     private void confirmDrawAmountChange(int newDrawAmount, Window dialogParent, CheckButton previousRadio) {

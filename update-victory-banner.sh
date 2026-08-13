@@ -6,7 +6,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-SVG=congratulations.svg
+SVG=congratulations_2.svg
 CSS=src/main/resources/style/gtklondike.css
 JAVA=src/main/java/org/coffinwood/gtklondike/GTKlondike.java
 
