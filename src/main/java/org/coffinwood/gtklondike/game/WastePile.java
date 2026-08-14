@@ -11,6 +11,12 @@ import java.util.List;
  * waste pile with 1 or 3 face-up cards
  */
 public class WastePile implements MoveSource {
+    // much smaller than the trailing-batch fan offset passed into the constructor - shifts the
+    // visible front card just enough that an older/covered card peeks out from behind it whenever
+    // the pile holds more than one card, even in draw-1 mode where the trailing-batch fan alone
+    // never shows anything (every batch is a single card). See PileLayoutManager.setFrontOffsetX()
+    private static final double FRONT_OFFSET_X = 10.0;
+
     private final List<Card> cards = new ArrayList<>();
     private final PileWidget widget;
     private final PileLayoutManager layoutManager;
@@ -37,6 +43,7 @@ public class WastePile implements MoveSource {
         // flush stacking vertically (like stock/foundation) - only the horizontal fan cascades
         layoutManager.setCardOffsetY(0);
         layoutManager.setCardOffsetX(offsetX);
+        layoutManager.setFrontOffsetX(FRONT_OFFSET_X);
         widget.setWidgetOwner(this);
     }
 

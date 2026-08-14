@@ -37,9 +37,19 @@ public class PileLayoutManager extends LayoutManager {
     private double cardOffsetY = 0.0;   // 0 = stacked (stock/foundation), >0 = cascade (tableau)
     private double cardOffsetX = 0.0;   // 0 = stacked, >0 = fan (waste pile in draw-3 mode)
     // how many of the most-recently-added (trailing) children get spread out by cardOffsetX;
-    // cards before that stay flush at x=0. 0/1 => no visible fan regardless of cardOffsetX, which
-    // is what naturally keeps draw-1 mode (batches of 1) from ever fanning
+    // cards before that stay flush at x=0 (see frontOffsetX below for how they still peek out).
+    // 0/1 => no extra spread within that window itself, which is what naturally keeps draw-1 mode
+    // (batches of 1) from ever fanning
     private int fanCount = 0;
+    // constant rightward offset applied to the whole trailing fanCount window, regardless of how
+    // many older/covered cards sit behind it. Cards behind the window stay flush at x=0, so this
+    // is the only thing that separates them from the front window - i.e. a single card's worth of
+    // "peek" reveals that something's underneath, no matter how many cards actually are. Being a
+    // fixed constant (not scaled by however many covered cards there are) keeps the front card's
+    // position stable as the pile grows/shrinks - only a covered card's presence/absence changes,
+    // never the front card's own offset, so it never visually "jumps". 0 = no effect, which is why
+    // tableau/stock/foundation piles (which never call setFrontOffsetX) are unaffected
+    private double frontOffsetX = 0.0;
     private int cardWidth = 150;
     private int cardHeight = (int)(cardWidth * 1.4);
 
@@ -101,6 +111,18 @@ public class PileLayoutManager extends LayoutManager {
 
 
     /**
+     * set the constant offset in pixels by which the trailing {@link #setFanCount fanned} window
+     * is shifted right of any older/covered cards behind it (which stay flush at x=0) - much
+     * smaller than {@link #setCardOffsetX}, just enough to let one card's worth of "peek" show
+     * through on the left when there's anything behind the front window at all
+     * @param offset offset
+     */
+    public void setFrontOffsetX(double offset) {
+        this.frontOffsetX = offset;
+    }
+
+
+    /**
      * set the cards' widths and heights to allow scaling
      * @param width width
      * @param height height
@@ -138,10 +160,12 @@ public class PileLayoutManager extends LayoutManager {
         int childCount = countVisibleChildren(widget);
         int size;
 
-        // horizontal layout for stock and discard pile
+        // horizontal layout for stock and discard pile. frontOffsetX is reserved unconditionally
+        // (not just once a covered card actually exists behind it) so the front card's own position
+        // never depends on the pile's size - see the field comment on frontOffsetX
         if(orientation == Orientation.HORIZONTAL) {
             int sizingFanCount = Math.min(fanCount, childCount);
-            size = cardWidth + (int) (Math.max(0, sizingFanCount - 1) * cardOffsetX);
+            size = cardWidth + (int) (frontOffsetX + Math.max(0, sizingFanCount - 1) * cardOffsetX);
         }
         // vertical layout for tableau lanes
         else {
@@ -195,18 +219,24 @@ public class PileLayoutManager extends LayoutManager {
             }
         }
 
-        int effectiveFanCount = Math.min(fanCount, childCount);
+        // at least 1 (once there's any card at all) so the top card always lands in the "front"
+        // window below and gets frontOffsetX, regardless of fanCount - fanCount can legitimately be
+        // 0 (e.g. WastePile's fanRemaining reaching 0 once the current draw batch is fully played
+        // off), but there's always still a top card resting at the front, batch or no batch
+        int effectiveFanCount = childCount > 0 ? Math.max(1, Math.min(fanCount, childCount)) : 0;
+        // children before this index are older/already-covered cards - they stay flush at x=0;
+        // only the trailing fanCount children (the current draw batch) get frontOffsetX plus the
+        // full cardOffsetX spread
+        int fanStartIndex = childCount - effectiveFanCount;
+
         double effectiveOffsetX = cardOffsetX;
         if(effectiveFanCount > 1) {
-            double neededWidth = cardWidth + (effectiveFanCount - 1) * cardOffsetX;
+            double neededWidth = frontOffsetX + cardWidth + (effectiveFanCount - 1) * cardOffsetX;
             // fan exceeds available space => shrink to fit, same idea as the Y cascade above
             if(neededWidth > width) {
-                effectiveOffsetX = Math.max(0, (double) (width - cardWidth) / (effectiveFanCount - 1));
+                effectiveOffsetX = Math.max(0, (width - frontOffsetX - cardWidth) / (effectiveFanCount - 1));
             }
         }
-        // children before this index are older/already-covered cards - they stay flush at x=0;
-        // only the trailing fanCount children (the current draw batch) get spread out
-        int fanStartIndex = childCount - effectiveFanCount;
 
         Widget child = widget.getFirstChild();
         int index = 0;
@@ -220,7 +250,9 @@ public class PileLayoutManager extends LayoutManager {
         while(child != null) {
             if(child.getVisible()) {
                 double y = index * effectiveOffsetY;
-                double x = index >= fanStartIndex ? (index - fanStartIndex) * effectiveOffsetX : 0.0;
+                double x = index >= fanStartIndex
+                        ? frontOffsetX + (index - fanStartIndex) * effectiveOffsetX
+                        : 0.0;
 
                 child.addCssClass("card_shadow");
                 if(previousChild != null && x == previousX && y == previousY) {

@@ -322,28 +322,46 @@ class GTKlondike extends Application {
 
         // recycling the waste pile back into the stock only ever hands back a *different* set of
         // cards than what's already on view if there's more waste than one batch's worth - within
-        // one batch (including "none at all"), it's just the same up-to-drawAmount cards cycling
-        // back, so treat that as "0 to draw" rather than the literal (unchanging) waste count
+        // one batch, it's just the same up-to-drawAmount cards cycling back. Rather than collapsing
+        // that "recycling is pointless" state down to a literal "0" (which reads as "no cards left"
+        // even though real, playable cards still sit in the waste pile), show a recycle glyph
+        // instead; "0" (an empty overlay) is reserved for waste actually being empty too
         int wasteCount = game.getWasteCardCount();
-        int displayNumber = wasteCount > game.getDrawAmount() ? wasteCount : 0;
-        stockPileIndicatorCssProvider.loadFromString(buildStockPileEmptyCss(displayNumber));
+        int drawAmount = game.getDrawAmount();
+        String overlayText;
+        if(wasteCount > drawAmount) {
+            overlayText = String.valueOf(wasteCount);
+        }
+        else if(wasteCount > 0) {
+            overlayText = "⊘"; // circled division slash - recycling waste is a no-op
+        }
+        else {
+            overlayText = "";
+        }
+        stockPileIndicatorCssProvider.loadFromString(buildStockPileEmptyCss(overlayText));
     }
 
 
     /**
      * build a ".card_pile_empty" CSS rule whose background-image is an inline SVG showing the
-     * given number, centred the same way the static placeholder rule in gtklondike.css is laid
-     * out - loaded into stockPileIndicatorCssProvider, which (being registered at a higher
-     * priority) overrides that static rule
-     * @param number the number to display
+     * given overlay text (a card count, a recycle glyph, or nothing), centred the same way the
+     * static placeholder rule in gtklondike.css is laid out - loaded into
+     * stockPileIndicatorCssProvider, which (being registered at a higher priority) overrides that
+     * static rule
+     * @param overlayText the text/glyph to display, or "" for none
      * @return a complete CSS rule, ready for CssProvider.loadFromString()
      */
-    private String buildStockPileEmptyCss(int number) {
+    private String buildStockPileEmptyCss(String overlayText) {
         String svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 75'>"
                 + "<text x='90' y='37.5' text-anchor='middle' dominant-baseline='central' font-size='64' "
                 + "font-family='sans-serif' font-weight='bold' fill='rgba(255,255,255,0.3)'>"
-                + number + "</text></svg>";
-        return ".card_pile_empty { background-image: url(\"data:image/svg+xml;utf8, " + svg + "\"); }";
+                + overlayText + "</text></svg>";
+        // .card_pile_base's own background-size (30% 30%, sized for an unrelated decorative
+        // watermark) would otherwise apply here too and non-uniformly squash this landscape SVG
+        // (180x75) into that box on the stock widget's portrait card shape - "contain" scales it
+        // uniformly to fit instead, so the glyph reads correctly instead of looking squeezed
+        return ".card_pile_empty { background-image: url(\"data:image/svg+xml;utf8, " + svg
+                + "\"); background-size: contain; }";
     }
 
 
