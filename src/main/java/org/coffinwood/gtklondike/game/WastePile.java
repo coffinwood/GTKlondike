@@ -14,8 +14,13 @@ public class WastePile implements MoveSource {
     // much smaller than the trailing-batch fan offset passed into the constructor - shifts the
     // visible front card just enough that an older/covered card peeks out from behind it whenever
     // the pile holds more than one card, even in draw-1 mode where the trailing-batch fan alone
-    // never shows anything (every batch is a single card). See PileLayoutManager.setFrontOffsetX()
-    private static final double FRONT_OFFSET_X = 10.0;
+    // never shows anything (every batch is a single card). See PileLayoutManager.setFrontOffsetX().
+    // Kept small so the cue stays a subtle hint rather than an eye-catching jump each time a card
+    // is drawn/played and the peek appears/disappears - there's no animation smoothing that
+    // transition (yet), so a stronger offset would read as more of a "twitch". A translucent peek
+    // (opacity on the peeking card) was tried as a further softener but caused GTK compositing
+    // flicker, so this offset reduction alone is the mitigation for now
+    private static final double FRONT_OFFSET_X = 5.0;
 
     private final List<Card> cards = new ArrayList<>();
     private final PileWidget widget;
