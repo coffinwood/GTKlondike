@@ -21,6 +21,8 @@ This project started partly as a proof of concept: how far can you get building 
 
 ## Building and running
 
+The quickest way to get running is to grab the fat jar from the [Releases](../../releases) page — it still needs GTK4 and glib2 installed on your system (see Requirements above), but skips building from source. Otherwise:
+
 ```sh
 ./gradlew shadowJar
 ./run-gtklondike.sh
