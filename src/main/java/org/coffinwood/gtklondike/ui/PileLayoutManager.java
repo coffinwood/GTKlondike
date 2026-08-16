@@ -23,14 +23,6 @@ public class PileLayoutManager extends LayoutManager {
      * exactly this many cards - NOT however many they actually, currently hold. A fresh tableau
      * lane starts with at most 7, so this leaves headroom for ordinary play before allocate()'s
      * shrink-to-fit (below) needs to compress a lane's card spacing to stay within it.
-     *
-     * This must stay a fixed constant, not track the live card count (not even capped): GTK grows
-     * a window to fit a larger natural size but never shrinks it back down on its own, and
-     * different tableau lanes grow/shrink at different rates as cards move between them during
-     * play. A size that tracks the live count - even capped - still fluctuates below that cap as
-     * cards come and go, and each increase drags the window up a notch it never comes back down
-     * from. Reporting a constant here means the window settles on one size and stays there;
-     * whatever a lane actually holds beyond this is handled entirely by allocate()'s squeeze.
      */
     private static final int MAX_CASCADE_CARDS_FOR_SIZING = 10;
 
@@ -42,13 +34,7 @@ public class PileLayoutManager extends LayoutManager {
     // (batches of 1) from ever fanning
     private int fanCount = 0;
     // constant rightward offset applied to the whole trailing fanCount window, regardless of how
-    // many older/covered cards sit behind it. Cards behind the window stay flush at x=0, so this
-    // is the only thing that separates them from the front window - i.e. a single card's worth of
-    // "peek" reveals that something's underneath, no matter how many cards actually are. Being a
-    // fixed constant (not scaled by however many covered cards there are) keeps the front card's
-    // position stable as the pile grows/shrinks - only a covered card's presence/absence changes,
-    // never the front card's own offset, so it never visually "jumps". 0 = no effect, which is why
-    // tableau/stock/foundation piles (which never call setFrontOffsetX) are unaffected
+    // many older/covered cards sit behind it.
     private double frontOffsetX = 0.0;
     private int cardWidth = 150;
     private int cardHeight = (int)(cardWidth * 1.4);
@@ -96,13 +82,7 @@ public class PileLayoutManager extends LayoutManager {
     /**
      * set how many of the most-recently-added cards should currently be spread out by the
      * horizontal offset; e.g. after drawing 3 cards in draw-3 mode, pass 3 so just that batch
-     * fans out while any older, already-covered cards stay flush behind them. Clamped to the
-     * pile's actual current card count at layout time only as a safety net (e.g. once the pile
-     * shrinks below the fan itself, near the end of a game) - the caller is still responsible for
-     * lowering this as cards get played off the top of the fanned batch (see WastePile.removeRun()),
-     * since this class has no way to tell "the batch shrank" apart from "an older, already-covered
-     * batch sits closer to the end of the pile than it used to" - both just look like a smaller
-     * childCount, but only the former should ever grow the fan's window into older cards
+     * fans out while any older, already-covered cards stay flush behind them.
      * @param fanCount trailing card count to fan out
      */
     public void setFanCount(int fanCount) {
@@ -112,9 +92,7 @@ public class PileLayoutManager extends LayoutManager {
 
     /**
      * set the constant offset in pixels by which the trailing {@link #setFanCount fanned} window
-     * is shifted right of any older/covered cards behind it (which stay flush at x=0) - much
-     * smaller than {@link #setCardOffsetX}, just enough to let one card's worth of "peek" show
-     * through on the left when there's anything behind the front window at all
+     * is shifted right of any older/covered cards behind it (which stay flush at x=0).
      * @param offset offset
      */
     public void setFrontOffsetX(double offset) {
@@ -264,12 +242,7 @@ public class PileLayoutManager extends LayoutManager {
 
                 // x=0,y=0 (the front-most/only card in a freshly-emptied pile, or any pile with
                 // cardOffsetX/Y of 0) skips GskTransform entirely rather than building then
-                // immediately discarding an identity translation - gtk_widget_allocate() already
-                // treats a null transform as identity, and this sidesteps a whole class of
-                // native-reference-ownership bugs around GskTransform (see git history/comments
-                // on this method for the two distinct ones already hit here) simply by never
-                // creating the object that class of bug lives in, for what's also the single most
-                // common case (every pile's first card hits this every allocate() pass).
+                // immediately discarding an identity translation
                 if(x == 0.0 && y == 0.0) {
                     child.allocate(cardWidth, cardHeight, baseline, null);
                 } else {

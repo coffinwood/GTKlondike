@@ -9,13 +9,10 @@ import java.util.List;
 
 
 /**
- * the board's native (GTK-backed) pile widgets, created once for the application's lifetime and
- * reused across every New Game/Restart/Undo instead of being torn down and rebuilt each time -
+ * The board's native (GTK-backed) pile widgets. Created once for the application's lifetime and
+ * reused across every New Game/Restart/Undo. Preferred to being torn down and rebuilt each time -
  * along with a matching CardWidget pool, since a deal/restart/undo replaces every pile's cards in
- * one burst. Recreating ~66 GObject-backed widgets (13 piles + up to 52 cards) on every such
- * burst turned out to race java-gi's GC-triggered toggle-ref finalizer against the very next
- * burst's allocations, surfacing as a SIGSEGV inside g_object_remove_toggle_ref; reusing the same
- * widget instances instead removes the trigger rather than trying to outrun it.
+ * one burst.
  */
 public class BoardWidgets {
     private final PileWidget stockWidget = PileWidget.create();
@@ -102,10 +99,10 @@ public class BoardWidgets {
 
 
     /**
-     * unparent and pool every CardWidget currently attached to any pile widget - called once at
+     * Unparent and pool every CardWidget currently attached to any pile widget - called once at
      * the start of a deal/restart/undo, before that operation starts pushing a fresh hand's cards
      * into these same, reused pile widgets. Whatever's left over from however the previous game
-     * ended is scattered across all 13 piles, not just the ones a normal move/draw would have
+     * ended is scattered across all 13 piles. Not just the ones a normal move/draw would have
      * touched, so this has to sweep all of them rather than relying on the normal
      * push()/removeRunWidgets() bookkeeping.
      */

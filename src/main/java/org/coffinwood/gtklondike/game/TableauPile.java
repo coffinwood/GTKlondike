@@ -123,7 +123,7 @@ public class TableauPile implements MoveSource, MoveTarget {
 
     /**
      * get a run of cards beginning at the selected card downwards
-     * @param startCard card to begin run at
+     * @param startCard card to start run at
      * @return run of cards
      */
     public List<Card> getRunStartingAt(Card startCard) {

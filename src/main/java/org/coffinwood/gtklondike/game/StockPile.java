@@ -9,8 +9,8 @@ import java.util.*;
  * card pile to draw cards from
  */
 public class StockPile {
-    private Deque<Card> cards;
-    private PileWidget widget;
+    private final Deque<Card> cards;
+    private final PileWidget widget;
     private final BoardWidgets boardWidgets;
 
 

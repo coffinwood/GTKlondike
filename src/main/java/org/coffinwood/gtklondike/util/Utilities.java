@@ -156,7 +156,7 @@ public final class Utilities {
 
     /**
      * text content of a UTF-8 classpath resource, read via a stream rather than resolving a
-     * filesystem path - this is what makes it work from inside a packed (shadow) jar too, where
+     * filesystem path. This is what makes it work from inside a packed (shadow) jar too, where
      * a resource URL's "file" part doesn't correspond to a real path on disk
      * @param resourcePath classpath resource path, e.g. "/style/gtklondike.css"
      * @return resource text, or "" if the resource doesn't exist

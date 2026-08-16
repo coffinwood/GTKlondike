@@ -11,15 +11,7 @@ import java.util.List;
  * waste pile with 1 or 3 face-up cards
  */
 public class WastePile implements MoveSource {
-    // much smaller than the trailing-batch fan offset passed into the constructor - shifts the
-    // visible front card just enough that an older/covered card peeks out from behind it whenever
-    // the pile holds more than one card, even in draw-1 mode where the trailing-batch fan alone
-    // never shows anything (every batch is a single card). See PileLayoutManager.setFrontOffsetX().
-    // Kept small so the cue stays a subtle hint rather than an eye-catching jump each time a card
-    // is drawn/played and the peek appears/disappears - there's no animation smoothing that
-    // transition (yet), so a stronger offset would read as more of a "twitch". A translucent peek
-    // (opacity on the peeking card) was tried as a further softener but caused GTK compositing
-    // flicker, so this offset reduction alone is the mitigation for now
+    // much smaller than the trailing-batch fan offset passed into the constructor
     private static final double FRONT_OFFSET_X = 5.0;
 
     private final List<Card> cards = new ArrayList<>();
@@ -27,11 +19,7 @@ public class WastePile implements MoveSource {
     private final PileLayoutManager layoutManager;
     private final BoardWidgets boardWidgets;
     // how many of the pile's trailing cards still belong to the most recent draw batch and should
-    // stay fanned out - shrinks as cards are played off the top (see removeRun()), independently
-    // of the pile's total card count. PileLayoutManager.setFanCount() takes a *count*, not a fixed
-    // set of cards, so without tracking this separately, once this batch shrinks below its
-    // original size, the fan's trailing window (childCount - fanCount) would slide into whatever
-    // older, already-covered batch sits behind it and incorrectly re-reveal one of its cards
+    // stay fanned out
     private int fanRemaining = 0;
 
 

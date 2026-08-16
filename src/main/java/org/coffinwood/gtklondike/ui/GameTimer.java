@@ -68,7 +68,7 @@ public class GameTimer {
 
 
     /**
-     * called whenever the play/pause button is clicked; see the class javadoc for why this is a
+     * called whenever the play/pause button is clicked; see the class Javadoc for why this is a
      * callback rather than GameTimer just toggling itself
      * @param callback invoked on every click of the play/pause button
      */

@@ -30,7 +30,7 @@ public class FoundationPile implements MoveSource, MoveTarget {
         this.widget = boardWidgets.getFoundationWidget(suit);
         widget.setWidgetOwner(this);
         widget.addCssClass("card_pile_base");
-        widget.addCssClass("foundationpile-" + suit);
+        widget.addCssClass("foundation_pile-" + suit);
         // Tableau-specific cascade offset, as opposed to stock/foundation's flush stacking
         widget.getPileLayoutManager().setCardOffsetY(offsetY);
     }

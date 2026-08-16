@@ -139,18 +139,6 @@ public class PileWidget extends Widget {
 
 
     /**
-     * clear pile of widgets
-     */
-    public void removeAllCards() {
-        for(CardWidget cardWidget : children) {
-            cardWidget.unparent();
-        }
-        children.clear();
-        queueAllocate();
-    }
-
-
-    /**
      * get all widgets
      * @return list of widgets
      */
@@ -161,10 +149,10 @@ public class PileWidget extends Widget {
 
     /**
      * GTK4 widgets must unparent children explicitly on dispose. Must then chain up to the
-     * parent class' dispose (GObject.dispose()'s own javadoc: "Before returning, dispose should
-     * chain up to the dispose method of the parent class") - java-gi's override mechanism
+     * parent class' dispose (GObject.dispose()'s own Javadoc: "Before returning, dispose should
+     * chain up to the dispose method of the parent class"). Java-gi's override mechanism
      * replaces the whole class' dispose vfunc with this method, so skipping super.dispose() here
-     * means GtkWidget's own base disposal (CSS node teardown, controller/layout-manager cleanup,
+     * means GtkWidget's own base disposal (CSS node teardown, controller/layout-manager clean-up,
      * unrooting) never runs, silently corrupting GObject's bookkeeping. That surfaced as
      * "g_object_remove_toggle_ref: assertion 'G_IS_OBJECT (object)' failed" once undo started
      * replacing the whole board (and thus disposing every PileWidget) after cards had been dealt.

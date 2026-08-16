@@ -72,15 +72,6 @@ public class Game {
 
 
     /**
-     * this game's original deal, e.g. to save it into SolvedDeals once won
-     * @return a fresh clone of the deck order this game started with
-     */
-    public List<Card> getInitialDeckOrder() {
-        return cloneDeck(initialDeckOrder);
-    }
-
-
-    /**
      * build one shuffled 52-card deck
      * @return shuffled deck
      */
@@ -159,19 +150,8 @@ public class Game {
 
 
     /**
-     * set the number of cards drawn from the stock at a time
-     * @param drawAmount 1 or 3
-     */
-    public void setDrawAmount(int drawAmount) {
-        this.drawAmount = drawAmount;
-    }
-
-
-    /**
-     * is the stock pile itself out of cards? TRUE both once there's nothing left to draw or
-     * recycle at all, and while the stock is empty but the waste pile still holds every card that
-     * would ever be drawn (including whatever's currently fanned/displayed there) - in both cases
-     * there's no face-down card actually sitting in the stock pile right now
+     * Is the stock pile itself out of cards? TRUE both once there's nothing left to draw or
+     * recycle at all.
      * @return TRUE if the stock pile has no cards left
      */
     public boolean isStockPileEmpty() {
@@ -344,15 +324,7 @@ public class Game {
     /**
      * play exactly one card of an already-decided game (see canAutoComplete()) over to its
      * foundation, then return - it's the caller's job to call this repeatedly (e.g. from a paced
-     * timer, so the player can actually watch it happen) until it returns FALSE. Safe/complete
-     * whenever canAutoComplete() is TRUE: since a tableau pile's face-up cards always form a
-     * single descending, alternating-colour run (that's the only way cards can ever legally get
-     * stacked there), each column's top card is always the LOWEST-ranked card left in that column
-     * - so it can never be blocking anything else in its own pile, and sending the globally-lowest
-     * remaining card to its foundation is always safe, in any order, until the board is empty.
-     * The card is played via the ordinary tryMove() path, so this is undo-tracked and victory
-     * detection fires normally on the final card, exactly as if the player had clicked it by hand.
-     * @return TRUE if a card was moved, FALSE once there's nothing left to auto-complete
+     * timer, so the player can actually watch it happen) until it returns FALSE.
      */
     public boolean autoCompleteStep() {
         for(TableauPile tableauPile : tableauPiles) {
@@ -436,12 +408,7 @@ public class Game {
 
 
     /**
-     * let the UI know canUndo()/canAutoComplete() may have changed, if it's listening. Must only
-     * be called once the triggering mutation is fully applied - pushUndoSnapshot() captures the
-     * board *before* a move, so notifying from there would let a listener re-check state that
-     * doesn't reflect this move yet (canAutoComplete() becoming true only actually happens once
-     * removeRun()/addRun()/performDraw() have run, so a listener asking too early always sees a
-     * "no" that's one move stale).
+     * Let the UI know canUndo()/canAutoComplete() may have changed, if it's listening.
      */
     private void notifyGameStateChanged() {
         if(onGameStateChanged != null) {
