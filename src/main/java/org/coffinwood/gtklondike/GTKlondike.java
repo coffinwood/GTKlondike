@@ -545,6 +545,7 @@ class GTKlondike extends Application {
         headerBar.packStart(newGameButton);
         headerBar.packStart(dealSolvableButton);
         headerBar.packStart(restartButton);
+        headerBar.packStart(new Separator());
         headerBar.packStart(undoButton);
         headerBar.packStart(autoCompleteButton);
 
