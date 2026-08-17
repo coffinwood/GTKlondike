@@ -15,6 +15,10 @@ import org.gnome.glib.Type;
 import org.gnome.gtk.*;
 import org.gnome.pango.WrapMode;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
 import java.text.NumberFormat;
 import java.util.*;
 import java.util.function.Supplier;
@@ -125,9 +129,42 @@ class GTKlondike extends Application {
      * @param args arguments
      */
     void main(String[] args) {
+        disableCoreDumps();
         Application app = new GTKlondike();
         app.run(args);
         app.unref();
+    }
+
+
+    /**
+     * Opt this process out of the kernel's core_pattern crash handler via prctl(PR_SET_DUMPABLE,
+     * 0), so a native-code abort (a GLib/GTK fatal warning, or the heap-corruption crashes this
+     * app has hit before - see git history around PileLayoutManager.java/CardWidget.java) doesn't
+     * get handed to Ubuntu's apport. run-gtklondike.sh's `ulimit -c 0` was meant to prevent
+     * exactly that, on the assumption that a zero core-size ulimit stops apport from embedding a
+     * full memory dump - it doesn't: a genuine SIGABRT here (2026-08-17, a real
+     * "g_atomic_ref_count_dec" assertion under G_DEBUG=fatal-warnings) still produced a ~200MB
+     * /var/crash/*.crash report despite that ulimit, and apport churning through it is what "the
+     * app just froze, had to force-quit it" actually was. PR_SET_DUMPABLE is checked by the
+     * kernel before core_pattern runs at all (pipe-based handlers like apport included), so this
+     * stops it at the source rather than relying on apport to honour a limit it doesn't seem to.
+     * HotSpot's own hs_err_pid*.log is written directly by the JVM's signal handler, not through
+     * this kernel path, so crash diagnostics there are unaffected. Best-effort: silently does
+     * nothing if prctl isn't available (e.g. not running on Linux).
+     */
+    private static void disableCoreDumps() {
+        final int PR_SET_DUMPABLE = 4;
+        try {
+            Linker linker = Linker.nativeLinker();
+            MethodHandle prctl = linker.downcallHandle(
+                    linker.defaultLookup().find("prctl").orElseThrow(),
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            prctl.invoke(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L);
+        } catch (Throwable ignored) {
+            // not fatal either way - HotSpot's own hs_err_pid*.log still gets written on a crash
+        }
     }
 
 

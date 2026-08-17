@@ -1,9 +1,14 @@
 #!/bin/sh
 # Launches the packaged fat jar the way the GNOME app-grid entry does, but with:
-#  - core dumps disabled, so a repeat of the SIGSEGV crashes recorded in past
-#    hs_err_pid*.log files (NVIDIA driver crashing inside GTK's GSK renderer) makes the
-#    process exit immediately instead of apport stalling for minutes trying to write a
-#    multi-GB core dump - which is what a "frozen, had to force-kill it" symptom actually was
+#  - core dumps disabled (belt-and-suspenders only - see below for the mechanism that actually
+#    works), so a repeat of the SIGSEGV crashes recorded in past hs_err_pid*.log files (NVIDIA
+#    driver crashing inside GTK's GSK renderer) doesn't have apport stalling for minutes trying
+#    to write a multi-GB core dump - which is what a "frozen, had to force-kill it" symptom
+#    actually was. NOTE: `ulimit -c 0` alone does NOT stop this - confirmed 2026-08-17, a real
+#    SIGABRT still produced a ~200MB apport report in /var/crash despite it. The actual fix is
+#    GTKlondike.main()'s prctl(PR_SET_DUMPABLE, 0) call, which stops the kernel from invoking
+#    apport's core_pattern handler at all, regardless of ulimit; this line is kept only in case
+#    that ever gets removed.
 #  - stdout/stderr appended to a log file next to the jar, since a desktop-launched process
 #    (no attached terminal) would otherwise just drop that output
 #  - the working directory set to the jar's own folder, so if the JVM does fatal-crash again,
