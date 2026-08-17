@@ -15,10 +15,9 @@ import org.gnome.glib.Type;
 import org.gnome.gtk.*;
 import org.gnome.pango.WrapMode;
 
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandle;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.NumberFormat;
 import java.util.*;
 import java.util.function.Supplier;
@@ -137,32 +136,34 @@ class GTKlondike extends Application {
 
 
     /**
-     * Opt this process out of the kernel's core_pattern crash handler via prctl(PR_SET_DUMPABLE,
-     * 0), so a native-code abort (a GLib/GTK fatal warning, or the heap-corruption crashes this
-     * app has hit before - see git history around PileLayoutManager.java/CardWidget.java) doesn't
-     * get handed to Ubuntu's apport. run-gtklondike.sh's `ulimit -c 0` was meant to prevent
-     * exactly that, on the assumption that a zero core-size ulimit stops apport from embedding a
-     * full memory dump - it doesn't: a genuine SIGABRT here (2026-08-17, a real
-     * "g_atomic_ref_count_dec" assertion under G_DEBUG=fatal-warnings) still produced a ~200MB
-     * /var/crash/*.crash report despite that ulimit, and apport churning through it is what "the
-     * app just froze, had to force-quit it" actually was. PR_SET_DUMPABLE is checked by the
-     * kernel before core_pattern runs at all (pipe-based handlers like apport included), so this
-     * stops it at the source rather than relying on apport to honour a limit it doesn't seem to.
+     * Tell the kernel to exclude this process' memory contents from any coredump it builds on a
+     * crash (writing "0" to /proc/self/coredump_filter - see core(5)), so a native-code abort (a
+     * GLib/GTK fatal warning, or the heap-corruption crashes this app has hit before - see git
+     * history around PileLayoutManager.java/CardWidget.java) doesn't leave Ubuntu's apport (which
+     * receives the coredump piped via /proc/sys/kernel/core_pattern) churning for a long time
+     * embedding a huge memory snapshot in its report. run-gtklondike.sh's `ulimit -c 0` was meant
+     * to prevent exactly that, on the assumption that a zero core-size ulimit stops apport from
+     * doing this - it doesn't: a genuine SIGABRT here (2026-08-17, a real "g_atomic_ref_count_dec"
+     * assertion under G_DEBUG=fatal-warnings) still produced a ~200MB /var/crash/*.crash report
+     * despite that ulimit, and apport churning through it is what "the app just froze, had to
+     * force-quit it" actually was.
+     * <p>
+     * An earlier version of this fix used prctl(PR_SET_DUMPABLE, 0), which does stop the kernel
+     * from invoking core_pattern at all - but it also blocks *any* other process (regardless of
+     * uid) from reading /proc/&lt;pid&gt;/root, which turned out to be exactly what
+     * xdg-desktop-portal needs to serve this app its dark-mode/icon-theme settings - so that
+     * version silently broke all desktop theming instead (2026-08-17, reported as "doesn't feature
+     * the GTK look and feel anymore"). coredump_filter has no such side effect: it only changes
+     * what memory the *coredump itself* contains, not process introspection permissions, so portal
+     * access (and everything else that reads /proc/&lt;pid&gt;) keeps working normally.
      * HotSpot's own hs_err_pid*.log is written directly by the JVM's signal handler, not through
      * this kernel path, so crash diagnostics there are unaffected. Best-effort: silently does
-     * nothing if prctl isn't available (e.g. not running on Linux).
+     * nothing if the file can't be written (e.g. not running on Linux).
      */
     private static void disableCoreDumps() {
-        final int PR_SET_DUMPABLE = 4;
         try {
-            Linker linker = Linker.nativeLinker();
-            MethodHandle prctl = linker.downcallHandle(
-                    linker.defaultLookup().find("prctl").orElseThrow(),
-                    FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
-            prctl.invoke(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L);
-        } catch (Throwable ignored) {
+            Files.writeString(Path.of("/proc/self/coredump_filter"), "0");
+        } catch (IOException | UnsupportedOperationException ignored) {
             // not fatal either way - HotSpot's own hs_err_pid*.log still gets written on a crash
         }
     }
