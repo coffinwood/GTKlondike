@@ -37,7 +37,7 @@ class GTKlondike extends Application {
     private static final int BOARD_PADDING = 20;
     // pause between each auto-completed card so the player can watch it happen - short enough to
     // still read as "fast-forwarding" rather than the game just sitting there card by card
-    private static final int AUTOMOVE_DELAY = 80;
+    private static final int AUTOCOMPLETE_DELAY = 80;
     // how much of the board's width the victory banner spans
     private static final double VICTORY_BANNER_WIDTH_FRACTION = 0.8;
     // height/width of congratulations.svg's own viewBox (3100 x 880.00002), so the banner's
@@ -78,14 +78,12 @@ class GTKlondike extends Application {
     // disabled/re-enabled around victory (see celebrateVictory()/clearVictoryBanner()); everything
     // else about "restart" is otherwise always available, so it isn't synced from Game state
     private SimpleAction restartAction;
-    // disabled/re-enabled around a pause (see pauseGame()/resumeGame()) - the Preferences dialogue
-    // has a "Show timer" toggle, which would otherwise let a paused player quietly hide the timer
-    // (and read as being able to fiddle with settings on a "frozen" board generally)
+    // disabled/re-enabled around a pause (see pauseGame()/resumeGame()). The Preferences dialogue
+    // has a "Show timer" toggle which would otherwise let a paused player quietly hide the timer
     private SimpleAction preferencesAction;
     // the "p"/Pause-key shortcut for the header bar's play/pause button (see toggleTimer());
     // disabled/re-enabled around victory alongside gameTimer's own toggle button, since
-    // pauseGame()'s own game.isVictory() guard already makes the accelerator a no-op then anyway -
-    // disabling the action too is just for a consistent "nothing left to pause" UI state
+    // pauseGame()'s own game.isVictory() guard already makes the accelerator a no-op then anyway
     private SimpleAction pauseAction;
     // glowed on victory to invite the next click, via the same "button_hint_glow" CSS class the
     // auto-complete button already uses
@@ -107,7 +105,7 @@ class GTKlondike extends Application {
     // sync with the stylesheet without needing a matching Java-side list to maintain
     private List<String> backgroundClassNames;
     // holds just the ".card_pile_empty" rule's background-image, regenerated with a fresh number
-    // by updateStockPileEmptyState() every time it changes - added to the display at a higher
+    // by updateStockPileEmptyState() every time it changes. Added to the display at a higher
     // priority than the main stylesheet (see activate()) so its background-image wins over the
     // static placeholder rule in gtklondike.css
     private CssProvider stockPileIndicatorCssProvider;
@@ -223,7 +221,7 @@ class GTKlondike extends Application {
     @Override
     public void shutdown() {
         Statistics.saveStats();
-        // GApplication requires overridden vfuncs to chain up to the parent implementation -
+        // GApplication requires over-ridden vfuncs to chain up to the parent implementation.
         // without this, GLib logs a "failed to chain up on ::shutdown" critical and its own
         // teardown (unregistering, releasing the hold that's keeping the main loop alive, etc.)
         // never runs
@@ -232,9 +230,9 @@ class GTKlondike extends Application {
 
 
     /**
-     * build the Grid and attach the board's 13 persistent pile widgets into it at their
-     * (permanently fixed) positions, and wire up their drop targets - all exactly once, since
-     * boardWidgets' widgets are reused rather than rebuilt for every New Game/Restart/Undo.
+     * Build the Grid and attach the board's 13 persistent pile widgets into it at their
+     * (permanently fixed) positions, and wire up their drop targets.
+     * All exactly once, since boardWidgets' widgets are reused rather than rebuilt for every New Game/Restart/Undo.
      * See onGameReplaced() for the part of the old rebuildBoard() that *does* still need to run
      * after each of those.
      */
@@ -320,9 +318,9 @@ class GTKlondike extends Application {
             boardWidgets.getStockWidget().removeCssClass("card_pile_empty");
         }
 
-        // recycling the waste pile back into the stock only ever hands back a *different* set of
-        // cards than what's already on view if there's more waste than one batch's worth - within
-        // one batch, it's just the same up-to-drawAmount cards cycling back. Rather than collapsing
+        // Recycling the waste pile back into the stock only ever hands back a *different* set of
+        // cards than what's already on view if there's more waste than one batch's worth.
+        // Within one batch, it's just the same up-to-drawAmount cards cycling back. Rather than collapsing
         // that "recycling is pointless" state down to a literal "0" (which reads as "no cards left"
         // even though real, playable cards still sit in the waste pile), show a recycle glyph
         // instead; "0" (an empty overlay) is reserved for waste actually being empty too
@@ -344,7 +342,7 @@ class GTKlondike extends Application {
 
     /**
      * build a ".card_pile_empty" CSS rule whose background-image is an inline SVG showing the
-     * given overlay text (a card count, a recycle glyph, or nothing), centred the same way the
+     * given overlay text (a card count, a recycle glyph, or nothing). Centred the same way the
      * static placeholder rule in gtklondike.css is laid out - loaded into
      * stockPileIndicatorCssProvider, which (being registered at a higher priority) overrides that
      * static rule
@@ -356,7 +354,7 @@ class GTKlondike extends Application {
                 + "<text x='90' y='37.5' text-anchor='middle' dominant-baseline='central' font-size='64' "
                 + "font-family='sans-serif' font-weight='bold' fill='rgba(255,255,255,0.3)'>"
                 + overlayText + "</text></svg>";
-        // .card_pile_base's own background-size (30% 30%, sized for an unrelated decorative
+        // .card_pile_base's own background-size (30% / 30%, sized for an unrelated decorative
         // watermark) would otherwise apply here too and non-uniformly squash this landscape SVG
         // (180x75) into that box on the stock widget's portrait card shape - "contain" scales it
         // uniformly to fit instead, so the glyph reads correctly instead of looking squeezed
@@ -367,8 +365,8 @@ class GTKlondike extends Application {
 
     /**
      * show/hide the "Deal a Solvable Game" header-bar button depending on whether the *current*
-     * draw amount's SolvedDeals library has grown past MIN_LIBRARY_SIZE_TO_OFFER yet - called
-     * after New Game/Restart/Undo, after a win (which may just have crossed the threshold), and
+     * draw amount's SolvedDeals library has grown past MIN_LIBRARY_SIZE_TO_OFFER yet.
+     * Called after New Game/Restart/Undo, after a win (which may just have crossed the threshold), and
      * whenever the draw amount preference changes (a different library/threshold applies)
      */
     private void updateDealSolvableAvailability() {
@@ -410,9 +408,10 @@ class GTKlondike extends Application {
 
     /**
      * play one auto-complete card, then - as long as there was one to play - schedule the next
-     * one after AUTO_COMPLETE_STEP_DELAY_MS instead of looping immediately, so each move actually
-     * gets painted and the player can watch the game finish itself rather than seeing it jump
-     * straight to "won". Runs through GLib's main-loop timer, not a blocking sleep, so the UI
+     * one after AUTO_COMPLETE_STEP_DELAY_MS instead of looping immediately.
+     * So each move actually gets painted and the player can watch the game finish itself rather than seeing it jump
+     * straight to "won".
+     * Runs through GLib's main-loop timer, not a blocking sleep, so the UI
      * (and any other input) stays responsive between steps.
      */
     private void runAutoCompleteStep() {
@@ -420,11 +419,11 @@ class GTKlondike extends Application {
         // not happen while GTK's native drag machinery still owns one of them. Rather than
         // abandoning the run, just wait the drag out and retry.
         if(CardWidget.currentDragPayload != null) {
-            GLib.timeoutAddOnce(AUTOMOVE_DELAY, this::runAutoCompleteStep);
+            GLib.timeoutAddOnce(AUTOCOMPLETE_DELAY, this::runAutoCompleteStep);
             return;
         }
         if(game.autoCompleteStep()) {
-            GLib.timeoutAddOnce(AUTOMOVE_DELAY, this::runAutoCompleteStep);
+            GLib.timeoutAddOnce(AUTOCOMPLETE_DELAY, this::runAutoCompleteStep);
         }
     }
 
@@ -443,21 +442,7 @@ class GTKlondike extends Application {
         addAction(newGameAction);
         setAccelsForAction("app.new-game", new String[] { "<Control>n" });
 
-        SimpleAction dealSolvableAction = new SimpleAction("deal-solvable", null);
-        dealSolvableAction.onActivate(parameter -> {
-            List<Card> solvedDeckOrder = SolvedDeals.pickRandomDeal(preferences.getDrawAmount());
-            if(solvedDeckOrder == null) {
-                // button is hidden below the library-size threshold, so this shouldn't happen -
-                // fall back to an ordinary shuffle rather than doing nothing
-                game = new Game(preferences.getDrawAmount(), boardWidgets);
-            }
-            else {
-                game = new Game(preferences.getDrawAmount(), boardWidgets, solvedDeckOrder);
-            }
-            onGameReplaced();
-            clearVictoryBanner();
-            gameTimer.reset();
-        });
+        SimpleAction dealSolvableAction = createDealSolvableAction();
         addAction(dealSolvableAction);
 
         restartAction = new SimpleAction("restart", null);
@@ -505,6 +490,30 @@ class GTKlondike extends Application {
         SimpleAction helpAction = new SimpleAction("help", null);
         helpAction.onActivate(parameter -> showHelpDialog());
         addAction(helpAction);
+    }
+
+
+    /**
+     * Create an action that deals a solvable game on click
+     * @return Action
+     */
+    private SimpleAction createDealSolvableAction() {
+        SimpleAction dealSolvableAction = new SimpleAction("deal-solvable", null);
+        dealSolvableAction.onActivate(parameter -> {
+            List<Card> solvedDeckOrder = SolvedDeals.pickRandomDeal(preferences.getDrawAmount());
+            if(solvedDeckOrder == null) {
+                // button is hidden below the library-size threshold, so this shouldn't happen -
+                // fall back to an ordinary shuffle rather than doing nothing
+                game = new Game(preferences.getDrawAmount(), boardWidgets);
+            }
+            else {
+                game = new Game(preferences.getDrawAmount(), boardWidgets, solvedDeckOrder);
+            }
+            onGameReplaced();
+            clearVictoryBanner();
+            gameTimer.reset();
+        });
+        return dealSolvableAction;
     }
 
 
@@ -908,7 +917,7 @@ class GTKlondike extends Application {
                 .build();
 
         alertDialog.choose(dialogParent, null, (source, result, data) -> {
-            int chosenButton = 0; // treat a dismissed/failed dialog (e.g. Escape) as Cancel
+            int chosenButton = 0; // treat a dismissed/failed dialogue (e.g. Escape) as Cancel
             try {
                 chosenButton = alertDialog.chooseFinish(result);
             }

@@ -13,7 +13,7 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * thin wrapper around the app's GSettings schema (org.coffinwood.gtklondike),
- * compiled at build time by the "compileGSettingsSchemas" gradle task into
+ * compiled at build time by the "compileGSettingsSchemas" Gradle task into
  * build/resources/main/schemas/gschemas.compiled
  */
 public class GamePreferences {
@@ -158,11 +158,4 @@ public class GamePreferences {
     }
 
 
-    /**
-     * set whether the elapsed-time timer is shown in the header bar
-     * @param showTimer TRUE to show the timer
-     */
-    public void setShowTimer(boolean showTimer) {
-        settings.setBoolean("show-timer", showTimer);
-    }
 }
