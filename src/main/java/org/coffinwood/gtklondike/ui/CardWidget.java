@@ -23,6 +23,7 @@ import java.util.List;
 public class CardWidget extends Widget {
     private Card card;
     private MoveSource ownerPile;
+    private DragSource dragSource;
     // the current run is static because there can be only one at a time
     public static CardRunPayload currentDragPayload;
 
@@ -37,6 +38,7 @@ public class CardWidget extends Widget {
         this.ownerPile = ownerPile;
         addCssClass("card_base");
         setupDragSource();
+        updateDragSourceAttachment();
     }
 
 
@@ -44,7 +46,8 @@ public class CardWidget extends Widget {
      * repurpose this already-constructed widget for a different card/pile, instead of
      * constructing a fresh CardWidget - see CardWidgetPool. setupDragSource()'s handlers read
      * `card`/`ownerPile` as instance fields (not captured locals), so they pick up the new
-     * values automatically; nothing about the drag controller itself needs re-wiring.
+     * values automatically; nothing about the drag controller's handlers needs re-wiring, only
+     * whether it's attached at all (see updateDragSourceAttachment()).
      * @param card the (different) card this widget now represents
      * @param ownerPile the (possibly different) pile this widget now belongs to
      */
@@ -57,6 +60,29 @@ public class CardWidget extends Widget {
         // remove CSS classes
         removeCssClass("card_selected");
         removeCssClass("card_normal");
+        updateDragSourceAttachment();
+    }
+
+
+    /**
+     * Stock-pile cards are always handed ownerPile == null (see
+     * BoardWidgets.obtainCardWidget()/StockPile) and can never be dragged - onPrepare already
+     * returns null for them - but merely having a DragSource controller attached still arms
+     * GTK's native drag-gesture machinery on every button press. Rapid clicking on the stock
+     * pile was implicated (via debug-launcher repro, see run-gtklondike-debug.sh) in a native
+     * GLib-CRITICAL ("g_atomic_ref_count_dec"/"gdk_drop_finalize"-family) heap-corruption crash,
+     * so widgets that can never actually be dragged shouldn't carry a DragSource at all. Since
+     * CardWidgets are pooled and reused across every pile type (BoardWidgets.cardWidgetPool),
+     * this has to be re-evaluated on every rebind(), not just at construction.
+     */
+    private void updateDragSourceAttachment() {
+        boolean shouldBeAttached = ownerPile != null;
+        boolean isAttached = dragSource.getWidget() != null;
+        if(shouldBeAttached && ! isAttached) {
+            addController(dragSource);
+        } else if(! shouldBeAttached && isAttached) {
+            removeController(dragSource);
+        }
     }
 
 
@@ -70,10 +96,11 @@ public class CardWidget extends Widget {
 
 
     /**
-     * the card must be draggable, so a drag-source
+     * build the drag-source controller and wire up its handlers. Attaching/detaching it to this
+     * widget is handled separately by updateDragSourceAttachment().
      */
     private void setupDragSource() {
-        DragSource dragSource = DragSource.builder()
+        dragSource = DragSource.builder()
                 .setActions(DragAction.MOVE)
                 .build();
 
@@ -134,8 +161,6 @@ public class CardWidget extends Widget {
             }
             currentDragPayload = null;
         });
-
-        addController(dragSource);
     }
 
 

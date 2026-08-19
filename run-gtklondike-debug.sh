@@ -14,19 +14,21 @@
 # CardWidget.java) - a native GTK object getting freed by Java's GC before GTK's own C code was
 # done with it.
 #
-# Deliberately fatal-criticals, not fatal-warnings: with GTKlondike.main()'s
-# prctl(PR_SET_DUMPABLE, 0) now in effect (see below), GTK's portal-monitor setup logs a
-# plain (non-critical) "Gtk-WARNING: Creating a portal monitor failed: ... Unable to open
-# /proc/<pid>/root" - an expected, harmless side effect of that prctl call, not a bug. Under
-# fatal-warnings that single startup warning would abort the app before you could even click
-# anything, so this only promotes CRITICALs (the actual assertion-failure bugs) to fatal.
+# Deliberately fatal-criticals, not fatal-warnings: GTK/GLib emit ordinary non-critical
+# WARNINGs during normal startup/use (e.g. portal-related ones) that aren't bugs; only actual
+# CRITICAL-level assertion failures (the real bug class) are promoted to fatal here. Under
+# fatal-warnings, plain startup warnings would abort the app before you could even click
+# anything.
 #
-# Also note: GTKlondike.main() calls prctl(PR_SET_DUMPABLE, 0) on startup so a crash here never
-# hands off to Ubuntu's apport (which was found to embed a full ~200MB memory dump in its crash
-# report regardless of `ulimit -c 0` - apport churning through that write is what "the app just
-# froze, had to force-quit it" turned out to actually be). So an abort under this script should
-# now be a clean, fast, non-frozen exit - if it instead hangs, that's new information worth
-# reporting on its own.
+# Also note: GTKlondike.main() writes "0" to /proc/self/coredump_filter on startup (see core(5))
+# so a crash here never hands off to Ubuntu's apport building a full memory-dump crash report
+# regardless of `ulimit -c 0` - apport churning through that multi-hundred-MB write is what "the
+# app just froze, had to force-quit it" turned out to actually be. (An earlier fix attempt used
+# prctl(PR_SET_DUMPABLE, 0) instead, which also stops apport but additionally blocks
+# xdg-desktop-portal's /proc/<pid>/root introspection, breaking dark-mode/icon theming - reverted
+# for that reason, see GTKlondike.java's comment.) So an abort under this script should now be a
+# clean, fast, non-frozen exit - if it instead hangs, that's new information worth reporting on
+# its own.
 #
 # If the game aborts while running under this script, send back:
 #  - this script's log file (has the specific GLib CRITICAL message that triggered it)
@@ -34,10 +36,12 @@
 #    right-clicked two tableau cards in quick succession")
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 JAR="$SCRIPT_DIR/build/libs/GTKlondike-all.jar"
-LOG="$SCRIPT_DIR/build/libs/GTKlondike-debug.log"
+LOGDIR="$HOME/.local/state/gtklondike"
+LOG="$LOGDIR/GTKlondike-debug.log"
 
+mkdir -p "$LOGDIR"
 ulimit -c 0
-cd "$(dirname -- "$JAR")" || exit 1
+cd "$LOGDIR" || exit 1
 
 GSK_RENDERER=gl
 export GSK_RENDERER
